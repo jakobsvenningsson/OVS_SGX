@@ -3444,7 +3444,7 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
          const struct ofputil_flow_mod *fm, const struct ofp_header *request)
 {
 
-	VLOG_INFO("Jamch..Inside the function add_flow...");
+	printf("Jamch..Inside the function add_flow..\n");
 	//fprintf(stderr,"INFO:Inside the function add_flow JM...\n");
 	struct ofopgroup *group;
     struct rule *victim;
@@ -3484,10 +3484,10 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
     }
 #else
     if (SGX_istable_readonly(table_id)){
-    	//printf("INFO-SGX: A flow cannot be added because the"
-    			//"the table %d is read only\n",(int)table_id);
-    	VLOG_INFO("INFO-SGX: A flow cannot be added because the"
+    	printf("INFO-SGX: A flow cannot be added because the"
     			"the table %d is read only\n",(int)table_id);
+    	//VLOG_INFO("INFO-SGX: A flow cannot be added because the"
+    	//		"the table %d is read only\n",(int)table_id);
 
     	return OFPERR_OFPBRC_EPERM;
     }
@@ -3502,7 +3502,7 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
 #ifndef SGX
     cls_rule_init(&rule->cr, &fm->match, fm->priority);
 #else
-
+    printf("about to enter SGX_cls_rule_ini\n");
     SGX_cls_rule_init(&rule->cr,&fm->match, fm->priority);
 #endif
     /* Serialize against pending deletion. */
