@@ -239,7 +239,7 @@ void ecall_classifier_replace(int table_id,struct cls_rule* o_cls_rule,struct cl
 	printf("ENCLAVE cls-replace:The sgx_rule from the node_search is: %p\n",sgx_cls_rule->o_cls_rule);
 	print("DEBUG2\n");
 	printf("ENCLAVE cls-replace the cls_rule intern addres: %p...\n",&sgx_cls_rule->cls_rule);
-	print("DEBUG1\n");
+	printf("DEBUG1\n");
 	struct cls_rule * cls_rule=classifier_replace(&SGX_oftables[table_id].cls,&sgx_cls_rule->cls_rule);
 	//cls_rule will return NULL or a pointer to a cls_rule
 	printf("ENCLAVE cls-replace: outside classifier_replace...%p\n",cls_rule);
