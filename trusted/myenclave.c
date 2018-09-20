@@ -243,8 +243,9 @@ void ecall_classifier_replace(int table_id,struct cls_rule* o_cls_rule,struct cl
 	struct cls_rule * cls_rule=classifier_replace(&SGX_oftables[table_id].cls,&sgx_cls_rule->cls_rule);
 	//cls_rule will return NULL or a pointer to a cls_rule
 	//printf("ENCLAVE cls-replace: outside classifier_replace...%p\n",cls_rule);
+	printf("THIS IS A DEFAULT\n");
 
-
+	//cls_rule will return NULL or a pointer to a cls_rule
 	if(cls_rule){
 		struct sgx_cls_rule *sgx_cls_rule_r=CONTAINER_OF(cls_rule,struct sgx_cls_rule,cls_rule);
 		*cls_rule_rtrn=sgx_cls_rule_r->o_cls_rule;
