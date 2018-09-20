@@ -21,6 +21,7 @@ void sgx_table_cls_init(){
  hash computed from the pointer holding the cls_rule in untrusted memory
 */
 struct sgx_cls_rule* node_search(const struct cls_rule *out){
+	printf("Inside the node_search function...\n");
 	struct sgx_cls_rule *rule;
 	HMAP_FOR_EACH_WITH_HASH(rule,hmap_node,(size_t)out,&SGX_hmap_table->cls_rules){
 		return rule;
@@ -234,8 +235,11 @@ int ecall_cls_rule_equal(const struct cls_rule *out_a, const struct cls_rule *ou
 void ecall_classifier_replace(int table_id,struct cls_rule* o_cls_rule,struct cls_rule ** cls_rule_rtrn){
 	printf("ENCLAVE cls-replace:table %d, pointer: %p...\n",table_id,o_cls_rule);
 	struct sgx_cls_rule * sgx_cls_rule=node_search(o_cls_rule);
+	printf("DEBUG1\n");
 	printf("ENCLAVE cls-replace:The sgx_rule from the node_search is: %p\n",sgx_cls_rule->o_cls_rule);
+	print("DEBUG2\n");
 	printf("ENCLAVE cls-replace the cls_rule intern addres: %p...\n",&sgx_cls_rule->cls_rule);
+	print("DEBUG1\n");
 	struct cls_rule * cls_rule=classifier_replace(&SGX_oftables[table_id].cls,&sgx_cls_rule->cls_rule);
 	//cls_rule will return NULL or a pointer to a cls_rule
 	printf("ENCLAVE cls-replace: outside classifier_replace...%p\n",cls_rule);
