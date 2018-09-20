@@ -127,7 +127,7 @@ $(UNTRUSTED_DIR)/%.o: $(UNTRUSTED_DIR)/%.c
 
 #Compile with pthread 
 link : $(UNTRUSTED_DIR)/myenclave_u.o $(App_C_Objects)
-	@ar rcsv libsample.a $(UNTRUSTED_DIR)/myenclave_u.o $(UNTRUSTED_DIR)/sample.o $(UNTRUSTED_DIR)/sgx_utils.o /opt/intel/sgxsdk/lib64/libsgx_urts_sim.so /opt/intel/sgxsdk/lib64/libsgx_uae_service_sim.so 
+	@ar rcsv libsample.a $(UNTRUSTED_DIR)/myenclave_u.o $(UNTRUSTED_DIR)/sample.o $(UNTRUSTED_DIR)/sgx_utils.o /opt/intel/sgxsdk/lib64/libsgx_urts.so /opt/intel/sgxsdk/lib64/libsgx_uae_service.so 
 
 #THIS is another way
 #link : $(UNTRUSTED_DIR)/myenclave_u.o $(App_C_Objects)

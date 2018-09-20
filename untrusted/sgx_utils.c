@@ -86,7 +86,7 @@ int initialize_enclave(sgx_enclave_id_t * global_eid)
 
 //ret = sgx_create_enclave(ENCLAVE_FILENAME, SGX_DEBUG_FLAG, &token, &updated, global_eid, NULL);
 
-	ret = sgx_create_enclave("/home/jorge/workspace/OVS_SGX_FT/sgx/enclave_myenclave/myenclave.signed.so", SGX_DEBUG_FLAG, &token, &updated, global_eid, NULL);
+	ret = sgx_create_enclave("/home/ats/Medina/myenclave.signed.so", SGX_DEBUG_FLAG, &token, &updated, global_eid, NULL);
     if (ret != SGX_SUCCESS) {
     	printf("Medina1\n");
         print_error_message(ret);
