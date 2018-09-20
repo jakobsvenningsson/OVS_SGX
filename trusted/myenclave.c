@@ -52,6 +52,13 @@ struct sgx_cls_rule* node_insert(uint32_t hash){
 	//We can find if the rule is already installed.
 	printf("Jorgitomedina1\n");
 	hmap_insert(&SGX_hmap_table->cls_rules,&new->hmap_node,new->hmap_node.hash);
+
+	struct sgx_cls_rule *rule;
+	HMAP_FOR_EACH_WITH_HASH(rule,hmap_node,hash,&SGX_hmap_table->cls_rules){
+		printf("CEROTE: %p\n",rule);
+	}
+
+
 	printf("Jorgitomedina2\n");
 	return new;
 }
