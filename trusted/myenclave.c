@@ -6,136 +6,57 @@
 #include "classifier.h"
 #include "ofproto-provider.h"
 
+//1. Definition of my hash_map table
+struct sgx_cls_table * SGX_hmap_table;
 
-//Functions to work on my SGX_cls_rules
+//*************SGX_cls_rule Methods*************************************************************
 
-//1. Definition of my linked list root
-struct sgx_cls_rule *root;
+//1. Initialization of hmap table
+void sgx_table_cls_init(){
+	SGX_hmap_table = xmalloc(sizeof(struct sgx_cls_table));
+	hmap_init(&SGX_hmap_table->cls_rules);
+}
 
+/*2. Node_search: This method is in charge of the searching of a cls_rule based on
+ hash computed from the pointer holding the cls_rule in untrusted memory
+*/
+struct sgx_cls_rule* node_search(const struct cls_rule *out){
+	struct sgx_cls_rule *rule;
+	HMAP_FOR_EACH_WITH_HASH(rule,hmap_node,(size_t)out,&SGX_hmap_table->cls_rules){
+		return rule;
+	}
+	return NULL;
+}
 
-//1. Function to insert
-struct sgx_cls_rule * node_append(void){
-	//printf("The address is %p %p\n",new,root);
+//3. Node_search_evict: Searches for a rule that match the struct eviction_group pointer
+struct sgx_cls_rule* node_search_evict(struct eviction_group *out){
+	struct sgx_cls_rule *rule;
+	HMAP_FOR_EACH(rule,hmap_node,&SGX_hmap_table->cls_rules){
+		if(rule->evict_group==out){
+			return rule;
+		}
+	}
+	return NULL;
+}
+
+//4. Node_insert: This function insert a new sgx_cls_rule to the hmap table.
+struct sgx_cls_rule* node_insert(uint32_t hash){
 	struct sgx_cls_rule * new=xmalloc(sizeof(struct sgx_cls_rule));
 	memset(new,0,sizeof(struct sgx_cls_rule));
-	if(!root){
-		//First node should be linked here
-		root=new;
-	}else{
-		//connect node to the end
-		struct sgx_cls_rule *temp;
-		temp=root;
-		while(temp->node !=NULL){
-			temp=temp->node;
-		}
-		temp->node=new;// Now its appended
-	}
+	new->hmap_node.hash=hash;
+	//We can find if the rule is already installed.
+	hmap_insert(&SGX_hmap_table->cls_rules,&new->hmap_node,new->hmap_node.hash);
 	return new;
 }
-//2. Function to search
-struct sgx_cls_rule* node_search(const struct cls_rule *out){
 
-	struct sgx_cls_rule *temp;
-	printf("INSIDE NODE_SEARCH..\n");
-	//If the root is Empty
-	printf("INSIDE NODE_SEARCH..2..\n");
-	if(!root){
-		printf("INSIDE NODE_SEARCH..3..\n");
-		return NULL;
-	}else{
-
-		//Search if the information is in the middle
-		if(root->o_cls_rule==out){
-			printf("INSIDE NODE_SEARCH..4..\n");
-			return CONTAINER_OF(&root->o_cls_rule,struct sgx_cls_rule,o_cls_rule);
-		}
-		//Then we look for in the rest of the nodes
-			temp=root->node;
-			while(temp->node !=NULL){
-				if(temp->o_cls_rule==out){
-					printf("INSIDE NODE_SEARCH..5..\n");
-					return CONTAINER_OF(&temp->o_cls_rule,struct sgx_cls_rule,o_cls_rule);
-				}
-				temp=temp->node;
-			}
-
-			//Search in the last node
-			if(temp->o_cls_rule==out){
-				printf("INSIDE NODE_SEARCH..6..\n");
-				return CONTAINER_OF(&temp->o_cls_rule,struct sgx_cls_rule,o_cls_rule);
-			}
-	}
-	return NULL;
-}
-
-//Search by evict_group
-struct sgx_cls_rule* node_search_evict(struct eviction_group *out){
-
-	struct sgx_cls_rule *temp;
-
-	//If the root is Empty
-	if(!root){
-		return NULL;
-	}else{
-
-		//Search if the information is in the middle
-		if(root->evict_group==out){
-			return CONTAINER_OF(&root->o_cls_rule,struct sgx_cls_rule,o_cls_rule);
-		}
-		//Then we look for in the rest of the nodes
-			temp=root->node;
-			while(temp->node !=NULL){
-				if(temp->evict_group==out){
-					return CONTAINER_OF(&temp->o_cls_rule,struct sgx_cls_rule,o_cls_rule);
-				}
-				temp=temp->node;
-			}
-
-			//Search in the last node
-			if(temp->evict_group==out){
-				return CONTAINER_OF(&temp->o_cls_rule,struct sgx_cls_rule,o_cls_rule);
-			}
-	}
-	return NULL;
-}
-
-//3. Function to delete
+//5. node_delete: deletes sgx_rule from the hmap table and free the sgx_cls_rule
 void node_delete(struct cls_rule *out){
-
-	struct sgx_cls_rule *temp, *p;
-	if(!root){
-		return;
-	}
-
-	temp=root;
-	p=NULL;
-
-	//First Node
-	if(root->o_cls_rule==out){
-		root=temp->node;
-		temp->node=NULL;
-		free(temp);
-	}else{
-		temp=root->node; //next node
-		p=root;
-		//Loop until a match is obtained in the nodes in between.
-		while(temp->node!=NULL){
-			if(temp->o_cls_rule==out){
-				p->node=temp->node;
-				temp->node=NULL;
-				free(temp);
-			}
-			//store the current state;
-			p=temp;
-			temp=temp->node;
-		}
-		//Last Node:
-		if(temp->o_cls_rule==out){
-			p->node=NULL;
-			free(temp);
-		}
-	}
+	struct sgx_cls_rule *rule;
+	rule=node_search(out);
+	hmap_remove(&SGX_hmap_table->cls_rules,&rule->hmap_node);
+	free(rule);
 }
+//*******************************************************************************
 
 //Declaration of my global variables
 /* This structure will contain the flow tables in enclave memory */
@@ -216,11 +137,8 @@ int ecall_istable_readonly(uint8_t table_id){
 void ecall_cls_rule_init(struct cls_rule * o_cls_rule,
 		const struct match * match , unsigned int priority){
 
-	//First its necessary to allocate a node
-	struct sgx_cls_rule *sgx_cls_rule=node_append();
-
-	//This is to save the address of the cls_rule untrusted as a int
-	sgx_cls_rule->p_cls_rule=(size_t)o_cls_rule;
+	//We proceed to insert the cls_rule to the hash_map
+	struct sgx_cls_rule *sgx_cls_rule= node_insert((size_t)o_cls_rule);
 
 	//Save the pointer into the sgx_cls_rule in o_cls_rule
 	sgx_cls_rule->o_cls_rule=o_cls_rule;

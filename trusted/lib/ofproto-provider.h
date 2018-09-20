@@ -88,16 +88,23 @@ struct oftable {
     struct heap eviction_groups_by_size;
 };
 
+//Internal hmap table
+
+struct sgx_cls_table {
+	struct hmap cls_rules;
+	//int n_table_rules;
+};
 
 //Internal Enclave cls_rule structure
 struct sgx_cls_rule {
-	size_t p_cls_rule;
+	//size_t p_cls_rule;
 	struct cls_rule  cls_rule; //Pointer of cls_rule in untrusted memory
 	struct cls_rule *o_cls_rule;  //cls rule created in trusted memory
 	struct heap_node rule_evg_node; //evg_node in a rule
 	struct eviction_group *evict_group; //points to a struct evict in trusted memory
 	bool evictable;              /* If false, prevents eviction. */
-	struct sgx_cls_rule *node;
+	//struct sgx_cls_rule *node;
+	struct hmap_node hmap_node;
 };
 
 /*Struct SGX_table_dpif: is a struct to store in trusted memory

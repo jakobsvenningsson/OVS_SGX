@@ -5,7 +5,7 @@
 #include <assert.h>
 
 extern struct oftable * SGX_oftables;
-extern struct sgx_cls_rule * root;
+extern struct sgx_cls_table * SGX_hmap_table;
 struct SGX_table_dpif * SGX_table_dpif;
 extern int SGX_n_tables;
 
