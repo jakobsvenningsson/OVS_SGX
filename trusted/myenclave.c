@@ -137,15 +137,16 @@ int ecall_istable_readonly(uint8_t table_id){
 void ecall_cls_rule_init(struct cls_rule * o_cls_rule,
 		const struct match * match , unsigned int priority){
 
+	printf("ENCLAVE-sept inside this function..\n");
 	//We proceed to insert the cls_rule to the hash_map
 	struct sgx_cls_rule *sgx_cls_rule= node_insert((size_t)o_cls_rule);
-
+	printf("Beto\n");
 	//Save the pointer into the sgx_cls_rule in o_cls_rule
 	sgx_cls_rule->o_cls_rule=o_cls_rule;
-
+	printf("Beto1\n");
 	//Initialization of the cls_rule (trusted)
 	cls_rule_init(&sgx_cls_rule->cls_rule,match,priority);
-
+	printf("Beto2\n");
 	//Set the eviction set of the rule to default=TRUE
 	sgx_cls_rule->evictable=true;
 

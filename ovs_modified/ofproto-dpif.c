@@ -1514,6 +1514,7 @@ add_internal_flow(struct ofproto_dpif *ofproto, int id,
     fm.ofpacts = ofpacts->data;
     fm.ofpacts_len = ofpacts->size;
     printf("DEBUG-outside(add-internal-flow) about to entered....\n");
+    printf("I am here..\n");
     error = ofproto_flow_mod(&ofproto->up, &fm);
     if (error) {
         VLOG_ERR_RL(&rl, "failed to add internal flow %d (%s)",
