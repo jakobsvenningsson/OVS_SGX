@@ -23,7 +23,7 @@ void sgx_table_cls_init(){
 struct sgx_cls_rule* node_search(const struct cls_rule *out){
 	printf("Inside the node_search function...\n");
 	struct sgx_cls_rule *rule;
-	HMAP_FOR_EACH_WITH_HASH(rule,hmap_node,(size_t)out,&SGX_hmap_table->cls_rules){
+	HMAP_FOR_EACH_WITH_HASH(rule,hmap_node,hash_pointer(out,0),&SGX_hmap_table->cls_rules){
 		return rule;
 	}
 	printf("returna NULO\n");
@@ -44,9 +44,6 @@ struct sgx_cls_rule* node_search_evict(struct eviction_group *out){
 //4. Node_insert: This function insert a new sgx_cls_rule to the hmap table.
 struct sgx_cls_rule* node_insert(uint32_t hash){
 	printf("The hash is %d\n",(int)hash);
-	if(hash==(size_t)hash){
-		printf("Thats no the problem\n");
-	}
 	struct sgx_cls_rule * new=xmalloc(sizeof(struct sgx_cls_rule));
 	memset(new,0,sizeof(struct sgx_cls_rule));
 	printf("HOLAAAA...\n");
@@ -157,7 +154,7 @@ void ecall_cls_rule_init(struct cls_rule * o_cls_rule,
 
 	printf("ENCLAVE-sept inside this function..\n");
 	//We proceed to insert the cls_rule to the hash_map
-	struct sgx_cls_rule *sgx_cls_rule= node_insert((size_t)o_cls_rule);
+	struct sgx_cls_rule *sgx_cls_rule= node_insert(hash_pointer(o_cls_rule,0));
 	printf("Beto\n");
 	//Save the pointer into the sgx_cls_rule in o_cls_rule
 	sgx_cls_rule->o_cls_rule=o_cls_rule;
