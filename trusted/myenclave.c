@@ -251,7 +251,8 @@ void ecall_classifier_replace(int table_id,struct cls_rule* o_cls_rule,struct cl
 	}else{
 		*cls_rule_rtrn=NULL;
 	}
-	printf("ENCLAVE cls-replace: the replace cls_rule is:%p\n",*cls_rule_rtrn);
+	//printf("ENCLAVE cls-replace: the replace cls_rule is:%p\n",*cls_rule_rtrn);
+	printf("MEDINININININ\n");
 }
 
 //10. rule_get_flags
