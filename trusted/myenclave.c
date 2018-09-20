@@ -41,8 +41,10 @@ struct sgx_cls_rule* node_search_evict(struct eviction_group *out){
 
 //4. Node_insert: This function insert a new sgx_cls_rule to the hmap table.
 struct sgx_cls_rule* node_insert(uint32_t hash){
+	printf("The hash is %d\n",(int)hash);
 	struct sgx_cls_rule * new=xmalloc(sizeof(struct sgx_cls_rule));
 	memset(new,0,sizeof(struct sgx_cls_rule));
+	printf("HOLAAAA...\n");
 	new->hmap_node.hash=hash;
 	//We can find if the rule is already installed.
 	hmap_insert(&SGX_hmap_table->cls_rules,&new->hmap_node,new->hmap_node.hash);
