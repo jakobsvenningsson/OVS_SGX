@@ -123,8 +123,9 @@ ecall_ofproto_init_tables(int n_tables)
 
     //This is set in ofproto_dpif.c
 
-    //printf("INFO:...%d The tables were created and initialized in memory...\n",n_tables);
-    uint8_t table_id=&SGX_oftables[100]-SGX_oftables;
+    //Initialization of the hmap containing SGX_rules
+    printf("Initialization of the hmap tables\n");
+    sgx_table_cls_init();
 
 }
 
