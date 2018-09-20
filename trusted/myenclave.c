@@ -26,6 +26,7 @@ struct sgx_cls_rule* node_search(const struct cls_rule *out){
 	HMAP_FOR_EACH_WITH_HASH(rule,hmap_node,(size_t)out,&SGX_hmap_table->cls_rules){
 		return rule;
 	}
+	printf("returna NULO\n");
 	return NULL;
 }
 
@@ -236,7 +237,7 @@ void ecall_classifier_replace(int table_id,struct cls_rule* o_cls_rule,struct cl
 	printf("ENCLAVE cls-replace:table %d, pointer: %p...\n",table_id,o_cls_rule);
 	struct sgx_cls_rule * sgx_cls_rule=node_search(o_cls_rule);
 	printf("DEBUG1\n");
-	//printf("ENCLAVE cls-replace:The sgx_rule from the node_search is: %p\n",sgx_cls_rule->o_cls_rule);
+	printf("ENCLAVE cls-replace:The sgx_rule from the node_search is: %p\n",sgx_cls_rule);
 	printf("DEBUG2\n");
 	//printf("ENCLAVE cls-replace the cls_rule intern addres: %p...\n",&sgx_cls_rule->cls_rule);
 	printf("DEBUG1\n");
