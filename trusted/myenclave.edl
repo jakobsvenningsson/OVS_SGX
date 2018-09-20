@@ -1,0 +1,80 @@
+/* myenclave.edl - Top EDL file. */
+
+enclave {
+	include "../trusted/lib/classifier.h"
+	include "../trusted/lib/ofproto-provider.h"
+    /* 
+     * ocall_myenclave_sample - invokes OCALL to display string buffer inside the enclave.
+     *  [in]: copy the string buffer to App outside.
+     *  [string]: specifies 'str' is a NULL terminated buffer.
+     */
+    untrusted {
+        void ocall_myenclave_sample([in, string] const char *str);
+       
+    };
+
+
+    trusted {
+    	    public int ecall_myenclave_sample();
+    	    public void ecall_ofproto_init_tables(int n_tables);
+    	    public void ecall_readonly_set(int table_id);
+    	    public int ecall_istable_readonly(uint8_t table_id);
+    	    public void ecall_cls_rule_init([user_check]struct cls_rule * o_cls_rule, [user_check] const struct match * match , unsigned int priority);
+    	    public int ecall_cr_rule_overlaps(int table_id,[user_check] struct cls_rule * o_cls_rule);
+    	    public void ecall_cls_rule_destroy([user_check]struct cls_rule *o_cls_rule);
+    	    public uint32_t ecall_cls_rule_hash([user_check]const struct cls_rule * o_cls_rule, uint32_t basis);
+    	    public int ecall_cls_rule_equal([user_check]const struct cls_rule *o_cls_rule_a,[user_check]const struct cls_rule *o_cls_rule_b);
+    	    public void ecall_classifier_replace(int table_id,[user_check]struct cls_rule* o_cls_rule,[user_check]struct cls_rule ** cls_rule_rtrn);
+    	    public enum oftable_flags ecall_rule_get_flags(int table_id);
+    	    public int ecall_cls_count(int table_id);
+    	    public int ecall_eviction_fields_enable(int table_id);
+    	    public void ecall_evg_group_resize(int table_id,[user_check]struct cls_rule *o_cls_rule,size_t priority);
+    	    public size_t ecall_evg_add_rule(int table_id,[user_check]struct cls_rule *o_cls_rule,uint32_t priority,uint32_t rule_evict_prioriy,struct heap_node rule_evg_node);
+    	    public int ecall_evg_remove_rule(int table_id,[user_check]struct cls_rule *o_cls_rule);
+    	    public void ecall_cls_remove(int table_id,[user_check]struct cls_rule *o_cls_rule);
+    	    public void ecall_choose_rule_to_evict(int table_id,[user_check]struct cls_rule *o_cls_rule);
+    	    public unsigned int ecall_table_mflows(int table_id);
+    	    public void ecall_choose_rule_to_evict_p(int table_id,[user_check]struct cls_rule *o_cls_rule);
+    	    public void ecall_minimatch_expand([user_check]struct cls_rule *o_cls_rule,[user_check]struct match *dst);
+    	    public unsigned int ecall_cr_priority([user_check]struct cls_rule *o_cls_rule);
+    	    public void ecall_cls_find_match_exactly(int table_id,[user_check]const struct match *target,unsigned int priority,[user_check]struct cls_rule **o_cls_rule);
+    	    public int ecall_femt_ccfe_c(int ofproto_n_tables,uint8_t table_id,[user_check]const struct match *match);
+    	    public void ecall_femt_ccfe_r(int ofproto_n_tables,[user_check]struct cls_rule **buf,int elem,uint8_t table_id,[user_check]const struct match *match);
+    	    public int ecall_femt_c(int ofproto_n_tables,uint8_t table_id,[user_check]const struct match *match,unsigned int priority);
+    	    public void ecall_femt_r(int ofproto_n_tables,[user_check]struct cls_rule **buf,int elem,uint8_t table_id,[user_check]const struct match *match,unsigned int priority);
+			public void ecall_oftable_enable_eviction(int table_id,[user_check]const struct mf_subfield *fields,size_t n_fields,uint32_t random_v);
+    	    public void ecall_oftable_disable_eviction(int table_id);
+    	    public int ecall_ccfe_c(int table_id);
+    	    public void ecall_ccfe_r([user_check]struct cls_rule **buf,int elem,int table_id);
+    	    public void ecall_table_mflows_set(int table_id,unsigned int value);
+    	    public void ecall_ofproto_destroy();
+    	    public unsigned int ecall_total_rules(void);
+    	    public void ecall_table_name(int table_id,[out,size=len]char *buf,size_t len);
+    	    public int ecall_collect_ofmonitor_util_c(int ofproto_n_tables,int table_id,[user_check]const struct minimatch *match);
+    	    public void ecall_collect_ofmonitor_util_r(int ofproto_n_tables,[user_check]struct cls_rule **buf,int elem,int table_id,[user_check]const struct minimatch *match);
+    	    public int ecall_cls_rule_is_loose_match([user_check]struct cls_rule *o_cls_rule,[user_check]const struct minimatch *criteria);
+    	    public int ecall_fet_ccfes_c(void);
+    	    public void ecall_fet_ccfes_r([user_check]struct cls_rule **buf,int elem);
+    	    public int ecall_fet_ccfe_c(void);
+    	    public void ecall_fet_ccfe_r([user_check]struct cls_rule **buf,int elem);
+    	    public void ecall_cls_lookup([user_check]struct cls_rule **o_cls_rule,int table_id,[user_check]const struct flow *flow,[user_check]struct flow_wildcards *wc);
+    	    public unsigned int ecall_cls_rule_priority([user_check]struct cls_rule *o_cls_rule);
+    	    public int ecall_desfet_ccfes_c(void);
+    	    public void ecall_desfet_ccfes_r([user_check]struct cls_rule **buf,int elem);
+    	    public unsigned int ecall_cls_rule_format([user_check]const struct cls_rule *o_cls_rule,[user_check]struct match *megamatch);
+    	    public void ecall_miniflow_expand([user_check]struct cls_rule *o_cls_rule,[user_check]struct flow *flow);
+    	   	public uint32_t ecall_rule_calculate_tag([user_check]struct cls_rule *o_cls_rule,[user_check]const struct flow *flow,int table_id);
+    	   	public void ecall_SGX_table_dpif(int n_tables);
+    	   	public int ecall_table_update_taggable(uint8_t table_id);
+    	   	public int ecall_is_sgx_other_table(int id);
+    	   	public uint32_t ecall_rule_calculate_tag_s(int id,[user_check]const struct flow *flow,uint32_t secret);
+    	    public void ecall_hidden_tables_check(void);	
+			public void ecall_oftable_set_name(int table_id,[user_check]char *name);
+			public uint16_t ecall_minimask_get_vid_mask([user_check]struct cls_rule *o_cls_rule);
+			public uint16_t ecall_miniflow_get_vid([user_check]struct cls_rule *o_cls_rule);
+			public int ecall_ofproto_get_vlan_c(void);
+			public void ecall_ofproto_get_vlan_r([user_check]uint16_t *buf,int elem);
+			
+			
+    };
+};
