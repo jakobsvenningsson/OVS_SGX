@@ -46,8 +46,11 @@ struct sgx_cls_rule* node_insert(uint32_t hash){
 	memset(new,0,sizeof(struct sgx_cls_rule));
 	printf("HOLAAAA...\n");
 	new->hmap_node.hash=hash;
+	printf("YA CASI\n");
 	//We can find if the rule is already installed.
+	printf("Jorgitomedina1\n");
 	hmap_insert(&SGX_hmap_table->cls_rules,&new->hmap_node,new->hmap_node.hash);
+	printf("Jorgitomedina2\n");
 	return new;
 }
 
