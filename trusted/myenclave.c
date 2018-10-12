@@ -55,7 +55,7 @@ struct sgx_cls_rule* node_insert(uint32_t hash){
 
 	struct sgx_cls_rule *rule;
 	HMAP_FOR_EACH_WITH_HASH(rule,hmap_node,hash,&SGX_hmap_table->cls_rules){
-		printf("CEROTE: %p\n",rule);
+		printf("CERO: %p\n",rule);
 	}
 
 

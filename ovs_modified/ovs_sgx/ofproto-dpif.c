@@ -60,6 +60,7 @@
 #ifdef SGX
 #include "sample.h"
 #endif
+#include <sys/time.h>
 VLOG_DEFINE_THIS_MODULE(ofproto_dpif);
 
 COVERAGE_DEFINE(ofproto_dpif_expired);
@@ -5663,7 +5664,7 @@ rule_dpif_lookup__(struct ofproto_dpif *ofproto, const struct flow *flow,
                    struct flow_wildcards *wc, uint8_t table_id)
 {
     struct cls_rule *cls_rule;
-
+    struct timespec st1, et1;
     bool frag;
 
     if (table_id >= N_TABLES) {
@@ -5688,7 +5689,11 @@ rule_dpif_lookup__(struct ofproto_dpif *ofproto, const struct flow *flow,
 #ifndef SGX
         cls_rule = classifier_lookup(cls, &ofpc_normal_flow, wc);
 #else
+        clock_gettime(CLOCK_REALTIME,&st1);
         SGX_cls_lookup(&cls_rule,table_id,&ofpc_normal_flow,wc);
+        clock_gettime(CLOCK_REALTIME,&et1);
+        //float elapsed1 = ((et1.tv_sec - st1.tv_sec) * 1000000L) + (et1.tv_usec - st1.tv_usec);
+        VLOG_INFO("JORGE: The lookup 1: %lu %lu",(et1.tv_sec - st1.tv_sec),(et1.tv_nsec - st1.tv_nsec));
 #endif
     } else if (frag && ofproto->up.frag_handling == OFPC_FRAG_DROP) {
         cls_rule = &ofproto->drop_frags_rule->up.cr;
@@ -5699,7 +5704,12 @@ rule_dpif_lookup__(struct ofproto_dpif *ofproto, const struct flow *flow,
 #ifndef SGX
     	cls_rule = classifier_lookup(cls, flow, wc);
 #else
+    	struct timespec st2, et2;
+    	clock_gettime(CLOCK_REALTIME,&st2);
     	SGX_cls_lookup(&cls_rule,table_id,flow,wc);
+    	clock_gettime(CLOCK_REALTIME,&et2);
+        //float elapsed2 = ((et2.tv_sec - st2.tv_sec) * 1000000) + (et2.tv_usec - st2.tv_usec);
+    	VLOG_INFO("JORGE: The lookup 2: %lu %lu",(et2.tv_sec - st2.tv_sec),(et2.tv_nsec - st2.tv_nsec));
 #endif
     }
     return rule_dpif_cast(rule_from_cls_rule(cls_rule));
