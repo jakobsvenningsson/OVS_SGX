@@ -21,12 +21,10 @@ void sgx_table_cls_init(){
  hash computed from the pointer holding the cls_rule in untrusted memory
 */
 struct sgx_cls_rule* node_search(const struct cls_rule *out){
-	printf("Inside the node_search function...\n");
 	struct sgx_cls_rule *rule;
 	HMAP_FOR_EACH_WITH_HASH(rule,hmap_node,hash_pointer(out,0),&SGX_hmap_table->cls_rules){
 		return rule;
 	}
-	printf("returna NULO\n");
 	return NULL;
 }
 
@@ -43,23 +41,18 @@ struct sgx_cls_rule* node_search_evict(struct eviction_group *out){
 
 //4. Node_insert: This function insert a new sgx_cls_rule to the hmap table.
 struct sgx_cls_rule* node_insert(uint32_t hash){
-	printf("The hash is %d\n",(int)hash);
 	struct sgx_cls_rule * new=xmalloc(sizeof(struct sgx_cls_rule));
 	memset(new,0,sizeof(struct sgx_cls_rule));
-	printf("HOLAAAA...\n");
 	new->hmap_node.hash=hash;
-	printf("YA CASI\n");
 	//We can find if the rule is already installed.
-	printf("Jorgitomedina1\n");
+
 	hmap_insert(&SGX_hmap_table->cls_rules,&new->hmap_node,new->hmap_node.hash);
 
 	struct sgx_cls_rule *rule;
 	HMAP_FOR_EACH_WITH_HASH(rule,hmap_node,hash,&SGX_hmap_table->cls_rules){
-		printf("CERO: %p\n",rule);
+
 	}
 
-
-	printf("Jorgitomedina2\n");
 	return new;
 }
 
@@ -152,23 +145,18 @@ int ecall_istable_readonly(uint8_t table_id){
 void ecall_cls_rule_init(struct cls_rule * o_cls_rule,
 		const struct match * match , unsigned int priority){
 
-	printf("ENCLAVE-sept inside this function..\n");
 	//We proceed to insert the cls_rule to the hash_map
 	struct sgx_cls_rule *sgx_cls_rule= node_insert(hash_pointer(o_cls_rule,0));
-	printf("Beto\n");
+
 	//Save the pointer into the sgx_cls_rule in o_cls_rule
 	sgx_cls_rule->o_cls_rule=o_cls_rule;
-	printf("Beto1\n");
+
 	//Initialization of the cls_rule (trusted)
 	cls_rule_init(&sgx_cls_rule->cls_rule,match,priority);
-	printf("Beto2\n");
+
 	//Set the eviction set of the rule to default=TRUE
 	sgx_cls_rule->evictable=true;
 
-	//Print DEBUG message to standard output
-	printf("ENCLAVE-DEBUG(cls_rule_init)a new sgx_cls_rule %p has"
-			" been allocated and its members set:cls_rule:%p,"
-			".. and out cls_rule:%p saved....\n",sgx_cls_rule,&sgx_cls_rule->cls_rule,sgx_cls_rule->o_cls_rule);
 
 }
 
@@ -241,17 +229,10 @@ int ecall_cls_rule_equal(const struct cls_rule *out_a, const struct cls_rule *ou
 
 //9. classifier_replace
 void ecall_classifier_replace(int table_id,struct cls_rule* o_cls_rule,struct cls_rule ** cls_rule_rtrn){
-	printf("ENCLAVE cls-replace:table %d, pointer: %p...\n",table_id,o_cls_rule);
+
 	struct sgx_cls_rule * sgx_cls_rule=node_search(o_cls_rule);
-	printf("DEBUG1\n");
-	printf("ENCLAVE cls-replace:The sgx_rule from the node_search is: %p\n",sgx_cls_rule);
-	printf("DEBUG2\n");
-	//printf("ENCLAVE cls-replace the cls_rule intern addres: %p...\n",&sgx_cls_rule->cls_rule);
-	printf("DEBUG1\n");
+
 	struct cls_rule * cls_rule=classifier_replace(&SGX_oftables[table_id].cls,&sgx_cls_rule->cls_rule);
-	//cls_rule will return NULL or a pointer to a cls_rule
-	//printf("ENCLAVE cls-replace: outside classifier_replace...%p\n",cls_rule);
-	printf("THIS IS A DEFAULT\n");
 
 	//cls_rule will return NULL or a pointer to a cls_rule
 	if(cls_rule){
@@ -260,8 +241,7 @@ void ecall_classifier_replace(int table_id,struct cls_rule* o_cls_rule,struct cl
 	}else{
 		*cls_rule_rtrn=NULL;
 	}
-	//printf("ENCLAVE cls-replace: the replace cls_rule is:%p\n",*cls_rule_rtrn);
-	printf("MEDINININININ\n");
+
 }
 
 //10. rule_get_flags
@@ -334,8 +314,6 @@ eviction_group_hash_rule(int table_id,struct cls_rule *cls_rule){
 size_t
 ecall_evg_add_rule(int table_id,struct cls_rule *o_cls_rule,uint32_t priority,uint32_t rule_evict_prioriy,struct heap_node rule_evg_node){
 	struct sgx_cls_rule * sgx_cls_rule=node_search(o_cls_rule);
-	printf("ENCLAVE:evg_add_rule table %d out_p %p the sgx_rule %d\n",
-			table_id,o_cls_rule,sgx_cls_rule);
 	struct eviction_group *evg;
 	evg=ecall_evg_find(table_id,eviction_group_hash_rule(table_id,&sgx_cls_rule->cls_rule),priority);
 	sgx_cls_rule->evict_group=evg;
@@ -458,17 +436,16 @@ void ecall_cls_find_match_exactly(int table_id,
                               const struct match *target,
                               unsigned int priority,struct cls_rule ** o_cls_rule){
 
-	printf("ENCLAVE_INFO: MEDINA CHIRINOS....%p\n",o_cls_rule);
+
 
 	struct cls_rule * cls_rule=classifier_find_match_exactly(&SGX_oftables[table_id].cls,
 			target,priority);
-	//printf("ENCLAVE-cls_find_match_exactly: cls_rule %p and o_cls_rule %p\n",cls_rule,o_cls_rule);
 
 	//Since this function returns NULL if no match entry, we have to take care of it
 	if(cls_rule){
-		printf("ENCLAVE:I AM HERE>>>>>>\n");
+
 		struct sgx_cls_rule * sgx_cls_rule=CONTAINER_OF(cls_rule,struct sgx_cls_rule,cls_rule);
-		printf("ENCLAVE: IAM HERE>>>>>>p\n");
+
 		*o_cls_rule=sgx_cls_rule->o_cls_rule;
 	}
 
@@ -896,8 +873,7 @@ void ecall_cls_lookup(struct cls_rule **o_cls_rule,int table_id,const struct flo
 	}else{
 		*o_cls_rule=NULL;
 	}
-	printf("ENCLAVE-DEBUG(cls-lookup): a cls_rule: %p was found"
-			" and it will return out cls_rule: %p\n",cls_rule,*o_cls_rule);
+
 }
 
 //2. cls_rule priority
@@ -958,7 +934,7 @@ unsigned int ecall_cls_rule_format(const struct cls_rule *o_cls_rule,struct matc
 
 uint32_t ecall_rule_calculate_tag(struct cls_rule *o_cls_rule,const struct flow *flow,int table_id)
 {
-	printf("ENCLAVE-DEBUG(rule_cal_tag):inside rule_cal_tag..\n");
+
 	//Retrieve the cls_rule
 	struct sgx_cls_rule *sgx_cls_rule;
 	sgx_cls_rule=node_search(o_cls_rule);
@@ -980,8 +956,7 @@ void ecall_miniflow_expand(struct cls_rule *o_cls_rule,struct flow *flow){
 
 	//Need to call miniflow_expand to copy the information in the just passed flow struct.
 	miniflow_expand(&sgx_cls_rule->cls_rule.match.flow,flow);
-	printf("Enclave-DEBUG(miniflow_expand): the flow: %p "
-			"was set with internal cls_rule: %p..\n",flow,&sgx_cls_rule->cls_rule);
+
 }
 
 //These functions are for the ofproto_dpif tables.
@@ -995,8 +970,7 @@ void ecall_SGX_table_dpif(int n_tables){
 		SGX_table_dpif[i].catchall_table=NULL;
 		SGX_table_dpif[i].other_table=NULL;
 	}
-	printf("ENCLAVE-DEBUG(SGX_table_dpif): %d has been allocated in trusted"
-			" memory",n_tables);
+
 }
 
 //2. void ecall_table_update_taggable
@@ -1085,7 +1059,7 @@ uint16_t ecall_minimask_get_vid_mask(struct cls_rule *o_cls_rule){
 	//Retrieve the cls_rule
 	struct sgx_cls_rule *sgx_cls_rule;
 	sgx_cls_rule=node_search(o_cls_rule);
-	printf("ENCLAVE:INSIDE MINIMASK_GET_VID_MASK...\n");
+
 	return minimask_get_vid_mask(&sgx_cls_rule->cls_rule.match.mask);
 
 }

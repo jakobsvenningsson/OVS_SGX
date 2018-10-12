@@ -487,12 +487,10 @@ ofproto_create(const char *datapath_name, const char *datapath_type,
     sgx_oftable_check_hidden();
 
 #endif
-    printf("DEBUG-untrusted inside ofproto-create after tables hidden..\n");
     ofproto->datapath_id = pick_datapath_id(ofproto);
     init_ports(ofproto);
 
     *ofprotop = ofproto;
-    printf("DEBUG: ofproto-create is done with error %d..\n",error);
     return 0;
 
 }
@@ -995,7 +993,7 @@ ofproto_configure_table(struct ofproto *ofproto, int table_id,
 
     ovs_assert(table_id >= 0 && table_id < ofproto->n_tables);
 
-//printf("DEBUG-untrusted: Inside the function ofproto_config_table\n");
+
 #ifndef SGX
     struct oftable *table;
     table = &ofproto->tables[table_id];
@@ -1017,7 +1015,7 @@ ofproto_configure_table(struct ofproto *ofproto, int table_id,
     }
 
 #endif
-    //printf("DEBUG-ENCLAVE: about to Enter oftable_enable_eviction....\n");
+
 
 #ifndef SGX
     if (s->groups) {
@@ -1085,7 +1083,6 @@ ofproto_flush__(struct ofproto *ofproto)
     if (ofproto->ofproto_class->flush) {
         ofproto->ofproto_class->flush(ofproto);
     }
-    printf("DEBUG: Inside the function ofproto_flush__\n");
     group = ofopgroup_create_unattached(ofproto);
 #ifndef SGX
 
@@ -1266,7 +1263,7 @@ ofproto_type_wait(const char *datapath_type)
 int
 ofproto_run(struct ofproto *p)
 {
-    printf("DEBUG-ofproto-run inside....\n");
+
 	struct sset changed_netdevs;
     const char *changed_netdev;
     struct ofport *ofport;
@@ -1303,15 +1300,15 @@ ofproto_run(struct ofproto *p)
         update_port(p, changed_netdev);
     }
     sset_destroy(&changed_netdevs);
-    printf("DEBUG-ofproto-run inside..0.\n");
+
     switch (p->state) {
     case S_OPENFLOW:
-    	//printf("DEBUG-ofproto-run inside..1.\n");
+
         connmgr_run(p->connmgr, handle_openflow);
         break;
 
     case S_EVICT:
-    	//printf("DEBUG-ofproto-run inside..2.\n");
+
         connmgr_run(p->connmgr, NULL);
         ofproto_evict(p);
         if (list_is_empty(&p->pending) && hmap_is_empty(&p->deletions)) {
@@ -1320,26 +1317,26 @@ ofproto_run(struct ofproto *p)
         break;
 
     case S_FLUSH:
-    	//printf("DEBUG-ofproto-run inside..3.\n");
+
         connmgr_run(p->connmgr, NULL);
-        //printf("DEBUG-ofproto-run inside..3-1.\n");
+
         ofproto_flush__(p);
-        //printf("DEBUG-ofproto-run inside..3-2.\n");
+
         if (list_is_empty(&p->pending) && hmap_is_empty(&p->deletions)) {
-        	printf("DEBUG-ofproto-run inside..3-3.\n");
+
         	connmgr_flushed(p->connmgr);
-        	printf("DEBUG-ofproto-run inside..3-4.\n");
+
             p->state = S_OPENFLOW;
         }
-        printf("DEBUG-ofproto-run inside..3-5.\n");
+
         break;
 
     default:
-    	printf("DEBUG-ofproto-run inside..4.\n");
+
         NOT_REACHED();
     }
 
-    printf("DEBUG-ofproto-run inside..5.\n");
+
     if (time_msec() >= p->next_op_report) {
         long long int ago = (time_msec() - p->first_op) / 1000;
         long long int interval = (p->last_op - p->first_op) / 1000;
@@ -1691,29 +1688,27 @@ ofproto_add_flow(struct ofproto *ofproto, const struct match *match,
     rule = rule_from_cls_rule(classifier_find_match_exactly(
                                   &ofproto->tables[0].cls, match, priority));
 #else
-    printf("DEBUG: inside ofproto_add_flow...\n");
 
-    printf("DEBUG:JORGE: the address of cls_rule_temp:%p,%p %p\n",temp,sin,rule);
     SGX_cls_find_match_exactly(0,match,priority,&sin);
-    printf("DEBUG:JORGE: the address of cls_rule_temp 1:%p\n",sin);
+
     rule=rule_from_cls_rule(sin);
-    printf("DEBUG: inside ofproto_add_flow stage 0: sgx_cls_rule:%p rule:%p...\n",sin,rule);
+
 #endif
 
 
-    //printf("DEBUG: inside ofproto_add_flow stage 0.1 %d and %d \n",(int)rule->ofpacts_len,(int)ofpacts_len);
+
 
 //from version 2.0
     if(rule){
-    	printf("DEBUG: ofpt1.....\n");
+
     	must_add = !ofpacts_equal(rule->ofpacts, rule->ofpacts_len,ofpacts, ofpacts_len);
     }else{
-    	printf("DEBUG: ofpt2.....\n");
+
     	must_add = true;
     }
 
     if(must_add){
-       	printf("DEBUG: inside ofproto_add_flow stage 0.2\n");
+
         	struct ofputil_flow_mod fm;
 
             memset(&fm, 0, sizeof fm);
@@ -1722,31 +1717,13 @@ ofproto_add_flow(struct ofproto *ofproto, const struct match *match,
             fm.buffer_id = UINT32_MAX;
             fm.ofpacts = xmemdup(ofpacts, ofpacts_len);
             fm.ofpacts_len = ofpacts_len;
-            printf("DEBUG: inside ofproto_add_flow stage 1...\n");
+
             add_flow(ofproto, NULL, &fm, NULL);
-            printf("DEBUG: inside ofproto_add_flow stage 2...\n");
+
             free(fm.ofpacts);
     }
 
-/* This code is a bit buggy
-    if (!rule || !ofpacts_equal(rule->ofpacts, rule->ofpacts_len,
-                                ofpacts, ofpacts_len)) {
-    	printf("DEBUG: inside ofproto_add_flow stage 0.2\n");
-    	struct ofputil_flow_mod fm;
 
-        memset(&fm, 0, sizeof fm);
-        fm.match = *match;
-        fm.priority = priority;
-        fm.buffer_id = UINT32_MAX;
-        fm.ofpacts = xmemdup(ofpacts, ofpacts_len);
-        fm.ofpacts_len = ofpacts_len;
-        printf("DEBUG: inside ofproto_add_flow stage 1...\n");
-        add_flow(ofproto, NULL, &fm, NULL);
-        printf("DEBUG: inside ofproto_add_flow stage 2...\n");
-        free(fm.ofpacts);
-    }
-
-    */
 }
 
 /* Executes the flow modification specified in 'fm'.  Returns 0 on success, an
@@ -2285,9 +2262,8 @@ ofproto_rule_destroy__(struct rule *rule)
 #ifndef SGX
         cls_rule_destroy(&rule->cr);
 #else
-        VLOG_INFO("Inside the function ofproto_rule_destroy__ pointer%p\n",&rule->cr);
         SGX_cls_rule_destroy(&rule->cr);
-        VLOG_INFO("outside the function ofproto_rule_destroy__\n");
+
 #endif
         free(rule->ofpacts);
         rule->ofproto->ofproto_class->rule_dealloc(rule);
@@ -2372,8 +2348,6 @@ ofproto_rule_is_hidden(const struct rule *rule)
 #ifndef SGX
 	return rule->cr.priority > UINT16_MAX;
 #else
-	VLOG_INFO("ofproto_rule_is_hidden..");
-	VLOG_INFO("ofproto_rule_is_hidden.%d.",(int)SGX_cr_priority(&rule->cr));
 	return SGX_cr_priority(&rule->cr)> UINT16_MAX;
 #endif
 }
@@ -2920,7 +2894,7 @@ collect_rules_loose(struct ofproto *ofproto, uint8_t table_id,
     }
 
     list_init(rules);
-    VLOG_INFO("JM: Inside collect rules loosee...\n");
+
 
 #ifndef SGX
     struct oftable *table;
@@ -2949,40 +2923,39 @@ exit:
     return error;
 #else
     //1.It is needed to know the size of the buf to allocate.
-    VLOG_INFO("collect_rules....about to enter...\n");
+
     int buf_size=SGX_femt_ccfe_c(ofproto->n_tables,table_id,match);
-    VLOG_INFO("collect_rules....after buffer determination...buf size:%d.\n",buf_size);
+
     if(buf_size){
     	int lp;
     	//2. we need to allocate the struct cls_rule buff
     	struct cls_rule *buf[buf_size];
     	//memset(buf,0,buf_size*sizeof(struct cls_rule));
     	//3. we invoke the ecall to populate the buff
-    	VLOG_INFO("collect_rules....about to enter..100");
+
     	SGX_femt_ccfe_r(ofproto->n_tables,buf,buf_size,table_id,match);
-    	VLOG_INFO("collect_rules....about to enter.200");
+
     	//4. we call the necessary functions
     	for(lp=0;lp<buf_size;lp++){
     		//we recover the rule
-    		VLOG_INFO("collect_rules....the %d point is: %p",lp,buf[lp]);
-    		VLOG_INFO("collect_rules....the i point is: %p\n",buf[lp]);
+
     		struct rule *rule=rule_from_cls_rule(buf[lp]);
-    		VLOG_INFO("collect_rules....the point is: %p",rule);
+
     		if (rule->pending) {
     		                error = OFPROTO_POSTPONE;
     		                goto exit;
     		}
-    		VLOG_INFO("collect_rules....after pending....");
+
     		 if (!ofproto_rule_is_hidden(rule)
     		                && ofproto_rule_has_out_port(rule, out_port)
     		                    && !((rule->flow_cookie ^ cookie) & cookie_mask)) {
 
     			 list_push_back(rules, &rule->ofproto_node);
     		   }
-    		 VLOG_INFO("collect_rules....after hidden rule....");
+
 
     	}
-    	VLOG_INFO("collect_rules....stg1....");
+
 
     }
 
@@ -3490,10 +3463,6 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
     }
 #else
     if (SGX_istable_readonly(table_id)){
-    	//printf("INFO-SGX: A flow cannot be added because the"
-    			//"the table %d is read only\n",(int)table_id);
-    	//VLOG_INFO("INFO-SGX: A flow cannot be added because the"
-    	//		"the table %d is read only\n",(int)table_id);
 
     	return OFPERR_OFPBRC_EPERM;
     }
@@ -3509,7 +3478,7 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
     cls_rule_init(&rule->cr, &fm->match, fm->priority);
 #else
     clock_gettime(CLOCK_REALTIME,&st);
-    //printf("about to enter SGX_cls_rule_ini\n");
+
     SGX_cls_rule_init(&rule->cr,&fm->match, fm->priority);
     clock_gettime(CLOCK_REALTIME,&et);
     VLOG_INFO("J02: The time is: %lu %lu",(et.tv_sec - st.tv_sec),(et.tv_nsec - st.tv_nsec));
@@ -3520,8 +3489,7 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
 #ifndef  SGX
     	cls_rule_destroy(&rule->cr);
 #else
-    	//printf("Inside is_flow_deletion_pending....\n");
-    	VLOG_INFO("Inside is_flow_deletion_pending....\n");
+
     	SGX_cls_rule_destroy(&rule->cr);
 #endif
         ofproto->ofproto_class->rule_dealloc(rule);
@@ -3536,8 +3504,7 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
         && classifier_rule_overlaps(&table->cls, &rule->cr)) {
     	cls_rule_destroy(&rule->cr);
 #else
-    //printf("DEBUG:about to enter the loop SGX_cr_rule_overlap\n");
-    	VLOG_INFO("DEBUG:about to enter the loop SGX_cr_rule_overlap\n");
+
     if (fm->flags & OFPFF_CHECK_OVERLAP
             && SGX_cr_rule_overlaps(table_id,&rule->cr)) {
     	SGX_cls_rule_destroy(&rule->cr);
@@ -3572,14 +3539,11 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
     rule->modify_seqno = 0;
 
     /* Insert new rule. */
-    VLOG_INFO("DEBUG:About to insert the table %p...\n",&rule->cr);
-    //printf("DEBUG:About to insert the table...\n");
     clock_gettime(CLOCK_REALTIME,&st);
     victim = oftable_replace_rule(rule);
     clock_gettime(CLOCK_REALTIME,&et);
     VLOG_INFO("J03: The time is:  %lu %lu",(et.tv_sec - st.tv_sec),(et.tv_nsec - st.tv_nsec));
-    //VLOG_INFO("DEBUG: outside the oftable_replace_rule the victim is"
-    		//"%p...\n",&victim->cr);
+
     if (victim && !rule_is_modifiable(victim)) {
         error = OFPERR_OFPBRC_EPERM;
     } else if (victim && victim->pending) {
@@ -3597,19 +3561,14 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
             evict = choose_rule_to_evict(table);
             rule->evictable = was_evictable;
 #else
-            //VLOG_INFO("Enclave: about to enter the if(classifier_coutn)..\n");
 
             if (SGX_cls_count(table_id)> SGX_table_mflows(table_id)){
-            	//printf("DEBUG_JORGE MEDINA\n");
             	struct cls_rule *cls_rule_temp;
-            	//printf("JORGITO:%p\n",cls_rule_temp);
             	SGX_choose_rule_to_evict_p(table_id,cls_rule_temp);
-            	//printf("JORGITO 1:%p\n",cls_rule_temp);
             	evict=rule_from_cls_rule(cls_rule_temp);
 #endif
             if (!evict) {
                 error = OFPERR_OFPFMFC_TABLE_FULL;
-                VLOG_INFO("About to go to exit...\n");
                 goto exit;
             } else if (evict->pending) {
                 error = OFPROTO_POSTPONE;
@@ -3622,22 +3581,22 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
         group = ofopgroup_create(ofproto, ofconn, request, fm->buffer_id);
         op = ofoperation_create(group, rule, OFOPERATION_ADD, 0);
         op->victim = victim;
-        //VLOG_INFO("ABOUT TO CONSTRUCT RULE....\n");
+
         clock_gettime(CLOCK_REALTIME,&st);
         error = ofproto->ofproto_class->rule_construct(rule);
         clock_gettime(CLOCK_REALTIME,&et);
         VLOG_INFO("J04: The time is:  %lu %lu",(et.tv_sec - st.tv_sec),(et.tv_nsec - st.tv_nsec));
-        //printf("DEBUG-untrusted  exit rule_construct error:%d....\n",error);
+
         if (error) {
             op->group->n_running--;
             ofoperation_destroy(rule->pending);
         } else if (evict) {
-            //printf("add_flow inside evict......\n");
+
         	delete_flow__(evict, group);
         }
-        //VLOG_INFO("DEBUG: About to enter in ofopgroup_submit..\n");
+
         ofopgroup_submit(group);
-        //VLOG_INFO("DEBUG: About to exit in ofopgroup_submit..\n");
+
     }
 
 exit:
@@ -3646,8 +3605,7 @@ exit:
         oftable_substitute_rule(rule, victim);
         ofproto_rule_destroy__(rule);
     }
-    //VLOG_INFO("Jamch..untrusted Add_flow ends with error: %d...\n",error);
-    //printf("DEBUG:untrusted Add_flow ends with error: %d...\n",error);
+
     clock_gettime(CLOCK_REALTIME,&et1);
     VLOG_INFO("ADD_FLOW: The time is:  %lu %lu",(et1.tv_sec - st1.tv_sec),(et1.tv_nsec - st1.tv_nsec));
     return error;
@@ -3828,13 +3786,12 @@ delete_flows_loose(struct ofproto *ofproto, struct ofconn *ofconn,
     enum ofperr error;
 
     clock_gettime(CLOCK_REALTIME,&st);
-    //VLOG_INFO("Inside delete_flows_loose...about to perform collect_rules_loose 500");
     error = collect_rules_loose(ofproto, fm->table_id, &fm->match,
                                 fm->cookie, fm->cookie_mask,
                                 fm->out_port, &rules);
     clock_gettime(CLOCK_REALTIME,&et);
     VLOG_INFO("J06.1: The time is: %lu %lu",(et.tv_sec - st.tv_sec),(et.tv_nsec - st.tv_nsec));
-    //VLOG_INFO("Inside delete_flows_loose...about to perform collect_rules_loose 100");
+
     return (error ? error
             : !list_is_empty(&rules) ? delete_flows__(ofproto, ofconn, request,
                                                       &rules)
@@ -4009,12 +3966,9 @@ handle_flow_mod__(struct ofproto *ofproto, struct ofconn *ofconn,
         return modify_flow_strict(ofproto, ofconn, fm, oh);
 
     case OFPFC_DELETE:
-    	//VLOG_INFO("JMEIDNA,,,,INSIDE CASE DELETE_FLOWS_LOOSE....\n");
-    	VLOG_INFO("JM:OFPFC DELETE....");
         return delete_flows_loose(ofproto, ofconn, fm, oh);
 
     case OFPFC_DELETE_STRICT:
-    	//VLOG_INFO("INSIDE CASE DELETE_FLOWS_STRICT....\n");
         return delete_flow_strict(ofproto, ofconn, fm, oh);
 
     default:
@@ -4673,12 +4627,11 @@ ofopgroup_create(struct ofproto *ofproto, struct ofconn *ofconn,
 static void
 ofopgroup_submit(struct ofopgroup *group)
 {
-    //printf("DEBUG-untrusted: inside ofopgroup_submit..");
+
 	if (!group->n_running) {
-		VLOG_INFO("DEBUG-untrusted: inside ofopgroup_submit if()..\n");
 		ofopgroup_complete(group);
     } else {
-    	VLOG_INFO("DEBUG-untrusted: inside ofopgroup_submit else()..");
+
     	list_push_back(&group->ofproto->pending, &group->ofproto_node);
         group->ofproto->n_pending++;
     }
@@ -4696,7 +4649,7 @@ ofopgroup_complete(struct ofopgroup *group)
     int error;
 
     ovs_assert(!group->n_running);
-    VLOG_INFO("DEBUG:ofopgroup_complete... stage 1...\n");
+
     error = 0;
     LIST_FOR_EACH (op, group_node, &group->ops) {
         if (op->error) {
@@ -4704,7 +4657,6 @@ ofopgroup_complete(struct ofopgroup *group)
             break;
         }
     }
-   VLOG_INFO("DEBUG:ofopgroup_complete... stage 2...\n");
     if (!error && group->ofconn && group->buffer_id != UINT32_MAX) {
         LIST_FOR_EACH (op, group_node, &group->ops) {
             if (op->type != OFOPERATION_DELETE) {
@@ -4721,7 +4673,7 @@ ofopgroup_complete(struct ofopgroup *group)
             }
         }
     }
-    VLOG_INFO("DEBUG:ofopgroup_complete... stage 3...\n");
+
     if (!error && !list_is_empty(&group->ofconn_node)) {
         abbrev_ofconn = group->ofconn;
         abbrev_xid = group->request->xid;
@@ -4729,7 +4681,7 @@ ofopgroup_complete(struct ofopgroup *group)
         abbrev_ofconn = NULL;
         abbrev_xid = htonl(0);
     }
-    VLOG_INFO("DEBUG:ofopgroup_complete... stage 4...\n");
+
     LIST_FOR_EACH_SAFE (op, next_op, group_node, &group->ops) {
         struct rule *rule = op->rule;
 
@@ -4741,7 +4693,7 @@ ofopgroup_complete(struct ofopgroup *group)
               - The affected rule is not visible to controllers.
 
               - The operation's only effect was to update rule->modified. */
-        VLOG_INFO("DEBUG:ofopgroup_complete... stage 5...\n");
+
         if (!(op->error
               || ofproto_rule_is_hidden(rule)
               || (op->type == OFOPERATION_MODIFY
@@ -4762,22 +4714,22 @@ ofopgroup_complete(struct ofopgroup *group)
         }
 
         rule->pending = NULL;
-        VLOG_INFO("DEBUG:ofopgroup_complete... stage 6...\n");
+
         switch (op->type) {
         case OFOPERATION_ADD:
             if (!op->error) {
                 uint16_t vid_mask;
-                VLOG_INFO("DEBUG:ofopgroup_complete... stage 7. address..%p\n",op->victim);
+
                 ofproto_rule_destroy__(op->victim);
-                VLOG_INFO("DEBUG:ofopgroup ofproto_rule_destroy__. address..%p\n",op->victim);
+
 #ifndef SGX
                 vid_mask = minimask_get_vid_mask(&rule->cr.match.mask);
 #else
                 vid_mask=SGX_minimask_get_vid_mask(&rule->cr);
 #endif
-                VLOG_INFO("DEBUG:ofopgroup_complete... stage 7-1...\n");
+
                 if (vid_mask == VLAN_VID_MASK) {
-                	printf("DEBUG:ofopgroup_complete... stage 7-2...\n");
+
                 	if (ofproto->vlan_bitmap) {
 
 #ifndef SGX
@@ -4785,7 +4737,7 @@ ofopgroup_complete(struct ofopgroup *group)
 #else
                 		uint16_t vid = SGX_miniflow_get_vid(&rule->cr);
 #endif
-                        VLOG_INFO("DEBUG:ofopgroup_complete... stage 7-3...\n");
+
                         if (!bitmap_is_set(ofproto->vlan_bitmap, vid)) {
                             bitmap_set1(ofproto->vlan_bitmap, vid);
                             ofproto->vlans_changed = true;
@@ -4795,7 +4747,6 @@ ofopgroup_complete(struct ofopgroup *group)
                     }
                 }
             } else {
-            	VLOG_INFO("DEBUG:ofopgroup_complete... stage 7-4...\n");
             	oftable_substitute_rule(rule, op->victim);
                 ofproto_rule_destroy__(rule);
             }
@@ -4828,9 +4779,9 @@ ofopgroup_complete(struct ofopgroup *group)
 
         ofoperation_destroy(op);
     }
-    VLOG_INFO("DEBUG:ofopgroup_complete... stage 8...\n");
+
     ofmonitor_flush(ofproto->connmgr);
-    VLOG_INFO("DEBUG:ofopgroup_complete... stage 9...\n");
+
     if (!list_is_empty(&group->ofproto_node)) {
         ovs_assert(ofproto->n_pending > 0);
         ofproto->n_pending--;
@@ -4845,7 +4796,7 @@ ofopgroup_complete(struct ofopgroup *group)
     }
     free(group->request);
     free(group);
-    VLOG_INFO("DEBUG:ofopgroup_complete... stage 10...\n");
+
 }
 
 /* Initiates a new operation on 'rule', of the specified 'type', within
@@ -5263,11 +5214,11 @@ eviction_group_add_rule(struct rule *rule)
         eviction_group_resized(table, evg);
     }
 #else
-    printf("DEBUG: Inside the function eviction_group_add...\n");
+
     if(SGX_eviction_fields_enable(rule->table_id) && (rule->hard_timeout || rule->idle_timeout)) {
     	size_t result=SGX_evg_add_rule(rule->table_id,&rule->cr,eviction_group_priority(0),
     	    			rule_eviction_priority(rule),rule->evg_node);
-    	printf("DEBUG: Inside the eviction_group_add if...\n");
+
     	SGX_evg_group_resize(rule->table_id,&rule->cr,eviction_group_priority(result));
     }
 
@@ -5445,26 +5396,24 @@ oftable_replace_rule(struct rule *rule)
     struct oftable *table = &ofproto->tables[rule->table_id];
     victim = rule_from_cls_rule(classifier_replace(&table->cls, &rule->cr));
 #else
-    printf("DEBUG-out: the cl_rule %p in table %d\n",&rule->cr,(int)rule->table_id);
+
     struct cls_rule * sgx_cls_rule; //An auxiliary cls_rule....
 
     SGX_classifier_replace(rule->table_id,&rule->cr,&sgx_cls_rule);
     victim = rule_from_cls_rule(sgx_cls_rule);
-    printf("DEBUG-out: the victim is %p\n",victim);
+
 #endif
-    printf("DEBUG-out victim outside.....\n");
+
 
     if (victim) {
-        printf("DEBUG-out inside if(victim)...\n");
     	if (!list_is_empty(&victim->expirable)) {
             list_remove(&victim->expirable);
         }
         eviction_group_remove_rule(victim);
     }
-    printf("DEBUG-out about eviction_group_add\n...");
     eviction_group_add_rule(rule);
     return victim;
-    printf("DEBUG-out outside eviction_group_add\n...");
+
 }
 
 /* Removes 'old' from its oftable then, if 'new' is nonnull, inserts 'new'. */

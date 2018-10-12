@@ -1458,21 +1458,17 @@ construct(struct ofproto *ofproto_)
 
     ofproto_init_tables(ofproto_, N_TABLES);
 
-    //printf("DEBUG: done with ofproto_init_tables..\n");
-
     error = add_internal_flows(ofproto);
 
-    //printf("DEBUG: done with add Internal..\n");
+
 
 #ifndef SGX
 
     //This is set inside the enclave.
     ofproto->up.tables[TBL_INTERNAL].flags = OFTABLE_HIDDEN | OFTABLE_READONLY;
 #else
-    //printf("Inside constructor about to set readonly the interlna table..\n");
     SGX_readonly_set(TBL_INTERNAL);
 #endif
-    printf("Inside constructor set readonly the interlna table..\n");
     ofproto->n_hit = 0;
     ofproto->n_missed = 0;
 
@@ -1488,7 +1484,6 @@ construct(struct ofproto *ofproto_)
     ofproto->total_subfacet_life_span = 0;
     ofproto->total_subfacet_count = 0;
     ofproto->n_update_stats = 0;
-    //printf("DEBUG-untrusted: Construct is done....\n");
     return error;
 }
 
@@ -1514,18 +1509,15 @@ add_internal_flow(struct ofproto_dpif *ofproto, int id,
     fm.flags = 0;
     fm.ofpacts = ofpacts->data;
     fm.ofpacts_len = ofpacts->size;
-    printf("DEBUG-outside(add-internal-flow) about to entered....\n");
-    printf("I am here..\n");
     error = ofproto_flow_mod(&ofproto->up, &fm);
     if (error) {
         VLOG_ERR_RL(&rl, "failed to add internal flow %d (%s)",
                     id, ofperr_to_string(error));
         return error;
     }
-    printf("DEBUG-outside(add-internal-flow) about to entered rule_dpif_lookup....\n");
+
     *rulep = rule_dpif_lookup__(ofproto, &fm.match.flow, NULL, TBL_INTERNAL);
     ovs_assert(*rulep != NULL);
-    printf("DEBUG-outside(add-internal-flow) about to exit rule_dpif_lookup....\n");
     return 0;
 }
 
@@ -1548,21 +1540,18 @@ add_internal_flows(struct ofproto_dpif *ofproto)
     controller->reason = OFPR_NO_MATCH;
     ofpact_pad(&ofpacts);
 
-    printf("DEBUG-untrusted: add miss_rule initial flow...\n");
     error = add_internal_flow(ofproto, id++, &ofpacts, &ofproto->miss_rule);
     if (error) {
         return error;
     }
 
     ofpbuf_clear(&ofpacts);
-    printf("DEBUG-untrusted: no_packet_in_rule initial flow...\n");
     error = add_internal_flow(ofproto, id++, &ofpacts,
                               &ofproto->no_packet_in_rule);
     if (error) {
         return error;
     }
 
-    printf("DEBUG-untrusted: drop_frags_rule flow...\n");
     error = add_internal_flow(ofproto, id++, &ofpacts,
                               &ofproto->drop_frags_rule);
     return error;
@@ -5764,7 +5753,6 @@ rule_dealloc(struct rule *rule_)
 static enum ofperr
 rule_construct(struct rule *rule_)
 {
-	printf("DEBUG-untrusted:Inside rule_construct...\n");
     struct rule_dpif *rule = rule_dpif_cast(rule_);
     struct ofproto_dpif *ofproto = ofproto_dpif_cast(rule->up.ofproto);
 
@@ -5807,15 +5795,14 @@ rule_construct(struct rule *rule_)
         struct flow flow;
 
 #ifndef SGX
-        //printf("DEBUG-untrusted:about to enter miniflow_expand to set flow\n");
+
         miniflow_expand(&rule->up.cr.match.flow, &flow);
         rule->tag = rule_calculate_tag(&flow, &rule->up.cr.match.mask,
                                        ofproto->tables[table_id].basis);
 #else
-        //printf("DEBUG-untrusted:about to enter SGX miniflow expand..%p...",&flow);
+
         SGX_miniflow_expand(&rule->up.cr,&flow);
         uint32_t hash;
-        //printf("DEBUG-untrusted: about to enter SGX_rule_tag...\n");
 		hash=SGX_rule_calculate_tag(&rule->up.cr,&flow,table_id);
 
 		if(hash){
@@ -5825,9 +5812,7 @@ rule_construct(struct rule *rule_)
 		}
 #endif
     }
-    //printf("DEBUG-Untrusted: About to enter complete_operation(rule) ...\n");
     complete_operation(rule);
-    printf("DEBUG-Untrusted: rule_construct Done!!! ...\n");
     return 0;
 }
 
