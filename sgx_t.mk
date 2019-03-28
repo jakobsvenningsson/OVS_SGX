@@ -44,7 +44,7 @@ endif
 Crypto_Library_Name := sgx_tcrypto
 
 Myenclave_C_Files := trusted/myenclave.c trusted/lib/util.c trusted/lib/hmap.c trusted/lib/list.c trusted/lib/classifier.c trusted/lib/flow.c trusted/lib/hash.c trusted/lib/match.c trusted/lib/meta-flow.c trusted/lib/sgx_htons.c trusted/lib/heap.c
-Myenclave_Include_Paths := -IInclude -Itrusted -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/libcxx -Itrusted/lib -Itrusted/include
+Myenclave_Include_Paths := -Iinclude -Itrusted -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/libcxx -Itrusted/lib -Itrusted/include
 
 Flags_Just_For_C := -Wno-implicit-function-declaration -std=c11
 Common_C_Cpp_Flags := $(SGX_COMMON_CFLAGS) -nostdinc -fvisibility=hidden -fpie -fstack-protector $(Myenclave_Include_Paths) -fno-builtin-printf -I.
@@ -112,4 +112,4 @@ myenclave.signed.so: myenclave.so
 	@$(SGX_ENCLAVE_SIGNER) sign -key trusted/myenclave_private.pem -enclave myenclave.so -out $@ -config trusted/myenclave.config.xml
 	@echo "SIGN =>  $@"
 clean:
-	@rm -f myenclave.* trusted/myenclave_t.*  $(Myenclave_C_Objects) 
+	@rm -f myenclave.* trusted/myenclave_t.*  $(Myenclave_C_Objects)

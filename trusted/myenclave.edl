@@ -1,20 +1,24 @@
 /* myenclave.edl - Top EDL file. */
 
 enclave {
+	include "common.h"
 	include "../trusted/lib/classifier.h"
 	include "../trusted/lib/ofproto-provider.h"
-    /* 
+    /*
      * ocall_myenclave_sample - invokes OCALL to display string buffer inside the enclave.
      *  [in]: copy the string buffer to App outside.
      *  [string]: specifies 'str' is a NULL terminated buffer.
      */
     untrusted {
         void ocall_myenclave_sample([in, string] const char *str);
-       
+
     };
 
 
     trusted {
+					public int ecall_start_poller([user_check] async_ecall *data);
+
+
     	    public int ecall_myenclave_sample();
     	    public void ecall_ofproto_init_tables(int n_tables);
     	    public void ecall_readonly_set(int table_id);
@@ -42,7 +46,7 @@ enclave {
     	    public void ecall_femt_ccfe_r(int ofproto_n_tables,[user_check]struct cls_rule **buf,int elem,uint8_t table_id,[user_check]const struct match *match);
     	    public int ecall_femt_c(int ofproto_n_tables,uint8_t table_id,[user_check]const struct match *match,unsigned int priority);
     	    public void ecall_femt_r(int ofproto_n_tables,[user_check]struct cls_rule **buf,int elem,uint8_t table_id,[user_check]const struct match *match,unsigned int priority);
-			public void ecall_oftable_enable_eviction(int table_id,[user_check]const struct mf_subfield *fields,size_t n_fields,uint32_t random_v);
+					public void ecall_oftable_enable_eviction(int table_id,[user_check]const struct mf_subfield *fields,size_t n_fields,uint32_t random_v);
     	    public void ecall_oftable_disable_eviction(int table_id);
     	    public int ecall_ccfe_c(int table_id);
     	    public void ecall_ccfe_r([user_check]struct cls_rule **buf,int elem,int table_id);
@@ -68,13 +72,13 @@ enclave {
     	   	public int ecall_table_update_taggable(uint8_t table_id);
     	   	public int ecall_is_sgx_other_table(int id);
     	   	public uint32_t ecall_rule_calculate_tag_s(int id,[user_check]const struct flow *flow,uint32_t secret);
-    	    public void ecall_hidden_tables_check(void);	
-			public void ecall_oftable_set_name(int table_id,[user_check]char *name);
-			public uint16_t ecall_minimask_get_vid_mask([user_check]struct cls_rule *o_cls_rule);
-			public uint16_t ecall_miniflow_get_vid([user_check]struct cls_rule *o_cls_rule);
-			public int ecall_ofproto_get_vlan_c(void);
-			public void ecall_ofproto_get_vlan_r([user_check]uint16_t *buf,int elem);
-			
-			
+    	    public void ecall_hidden_tables_check(void);
+					public void ecall_oftable_set_name(int table_id,[user_check]char *name);
+					public uint16_t ecall_minimask_get_vid_mask([user_check]struct cls_rule *o_cls_rule);
+					public uint16_t ecall_miniflow_get_vid([user_check]struct cls_rule *o_cls_rule);
+					public int ecall_ofproto_get_vlan_c(void);
+					public void ecall_ofproto_get_vlan_r([user_check]uint16_t *buf,int elem);
+
+
     };
 };

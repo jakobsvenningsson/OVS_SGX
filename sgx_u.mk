@@ -42,10 +42,10 @@ else
 	Urts_Library_Name := sgx_urts
 endif
 
-App_C_Files := $(UNTRUSTED_DIR)/sample.c $(UNTRUSTED_DIR)/sgx_utils.c 
-App_Include_Paths := -IInclude -I$(UNTRUSTED_DIR) -I$(SGX_SDK)/include 
+App_C_Files := $(UNTRUSTED_DIR)/sample.c $(UNTRUSTED_DIR)/sgx_utils.c $(UNTRUSTED_DIR)/spinlock.c
+App_Include_Paths := -Iinclude -I$(UNTRUSTED_DIR) -I$(SGX_SDK)/include
 
-App_C_Flags := $(SGX_COMMON_CFLAGS) -fPIC -Wno-attributes $(App_Include_Paths)
+App_C_Flags := $(SGX_COMMON_CFLAGS) -fPIC -Wno-attributes $(App_Include_Paths) $(LFLAGS)
 
 
 # Three configuration modes - Debug, prerelease, release
@@ -60,7 +60,7 @@ else
         App_C_Flags += -DNDEBUG -UEDEBUG -UDEBUG
 endif
 
-App_Link_Flags := $(SGX_COMMON_CFLAGS) -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -lpthread 
+App_Link_Flags := $(SGX_COMMON_CFLAGS) -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -lpthread
 
 ifneq ($(SGX_MODE), HW)
 	App_Link_Flags += -lsgx_uae_service_sim
@@ -120,18 +120,18 @@ $(UNTRUSTED_DIR)/%.o: $(UNTRUSTED_DIR)/%.c
 	@$(CC) $(App_C_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
-# Making an EXE	
+# Making an EXE
 #link: $(UNTRUSTED_DIR)/myenclave_u.o $(App_C_Objects)
 #	@$(CC) $^ -o medina $(App_Link_Flags)
 #	@echo "LINK =>  $@"
 
-#Compile with pthread 
+#Compile with pthread
 link : $(UNTRUSTED_DIR)/myenclave_u.o $(App_C_Objects)
-	@ar rcsv libsample.a $(UNTRUSTED_DIR)/myenclave_u.o $(UNTRUSTED_DIR)/sample.o $(UNTRUSTED_DIR)/sgx_utils.o /opt/intel/sgxsdk/lib64/libsgx_urts.so /opt/intel/sgxsdk/lib64/libsgx_uae_service.so 
+	@ar rcsv libOFTonSGX.a $(UNTRUSTED_DIR)/myenclave_u.o $(UNTRUSTED_DIR)/sample.o $(UNTRUSTED_DIR)/spinlock.o $(UNTRUSTED_DIR)/sgx_utils.o /opt/intel/sgxsdk/lib64/libsgx_urts.so /opt/intel/sgxsdk/lib64/libsgx_uae_service.so
 
 #THIS is another way
 #link : $(UNTRUSTED_DIR)/myenclave_u.o $(App_C_Objects)
-#	@$(CC) -fPIC -shared -o libsample.so $(UNTRUSTED_DIR)/myenclave_u.o $(UNTRUSTED_DIR)/sample.o $(UNTRUSTED_DIR)/sgx_utils.o -lpthread 
+#	@$(CC) -fPIC -shared -o libsample.so $(UNTRUSTED_DIR)/myenclave_u.o $(UNTRUSTED_DIR)/sample.o $(UNTRUSTED_DIR)/sgx_utils.o -lpthread
 #	@echo "LINK => $@"
 
 
@@ -140,7 +140,6 @@ link : $(UNTRUSTED_DIR)/myenclave_u.o $(App_C_Objects)
 clean:
 	#@rm -f sample  $(App_C_Objects) $(UNTRUSTED_DIR)/myenclave_u.*
 	@rm -f link  $(App_C_Objects) $(UNTRUSTED_DIR)/myenclave_u.* libsample.a
-	
+
 #wrapper_sim:
-#	@ar rcsv untrusted/libwrapper_sgx.a untrusted/sample.o untrusted/sgx_utils.o untrusted/myenclave_u.o /opt/intel/sgxsdk/lib64/libsgx_urts_sim.so  /opt/intel/sgxsdk/lib64/libsgx_uae_service_sim.so	
-	
+#	@ar rcsv untrusted/libwrapper_sgx.a untrusted/sample.o untrusted/sgx_utils.o untrusted/myenclave_u.o /opt/intel/sgxsdk/lib64/libsgx_urts_sim.so  /opt/intel/sgxsdk/lib64/libsgx_uae_service_sim.so

@@ -1456,6 +1456,7 @@ construct(struct ofproto *ofproto_)
                 hash_string(ofproto->up.name, 0));
     memset(&ofproto->stats, 0, sizeof ofproto->stats);
 
+    VLOG("ofproto_init_tables+++++++++++++++++++++\n");
     ofproto_init_tables(ofproto_, N_TABLES);
 
     error = add_internal_flows(ofproto);
