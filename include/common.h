@@ -4,6 +4,7 @@
 #include <sgx_spinlock.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <sgx_thread.h>
 
 #define ECALL_MYENCLAVE_SAMPLE 0
 #define ECALL_OFPROTO_INIT_TABLES 1
@@ -84,10 +85,14 @@ typedef struct {
 } return_value;
 
 typedef struct {
+  sgx_thread_mutex_t mutex;
   sgx_spinlock_t spinlock;
+  sgx_thread_cond_t cond;
   bool run;
   bool running_function;
   bool is_done;
+  bool sleeping;
+  int timeout_counter;
   int function;
   argument_list *args;
   return_value *ret;

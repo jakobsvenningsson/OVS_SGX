@@ -1,8 +1,9 @@
-
+#!/bin/bash
+source /opt/intel/sgxsdk/environment
 echo "%%%%%%%%%%%%%%%%%%%%%%%%% BUILDING OFTonSGX"
-
 make clean
-make SGX_MODE=HW SGX_PRERELEASE=1 SGX_DEBUG=0 LFLAGS="-D HOTCALL"
+make SGX_MODE=HW SGX_PRERELEASE=1 SGX_DEBUG=0 LFLAGS="-D HOTCALL -D TIMEOUT"
+#make LFLAGS="-D HOTCALL"
 cp myenclave.signed.so ovs
 
 echo "%%%%%%%%%%%%%%%%%%%%%%%%% BUILDING OvS"

@@ -1555,10 +1555,11 @@ SGX_EXTERNC const struct {
 
 SGX_EXTERNC const struct {
 	size_t nr_ocall;
-	uint8_t entry_table[1][60];
+	uint8_t entry_table[2][60];
 } g_dyn_entry_table = {
-	1,
+	2,
 	{
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
 		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
 	}
 };
@@ -1607,3 +1608,10 @@ sgx_status_t SGX_CDECL ocall_myenclave_sample(const char* str)
 	return status;
 }
 
+sgx_status_t SGX_CDECL ocall_sleep(void)
+{
+	sgx_status_t status = SGX_SUCCESS;
+	status = sgx_ocall(1, NULL);
+
+	return status;
+}

@@ -48,7 +48,7 @@ Myenclave_Include_Paths := -Iinclude -Itrusted -I$(SGX_SDK)/include -I$(SGX_SDK)
 
 Flags_Just_For_C := -Wno-implicit-function-declaration -std=c11
 Common_C_Cpp_Flags := $(SGX_COMMON_CFLAGS) -nostdinc -fvisibility=hidden -fpie -fstack-protector $(Myenclave_Include_Paths) -fno-builtin-printf -I.
-Myenclave_C_Flags := $(Flags_Just_For_C) $(Common_C_Cpp_Flags)
+Myenclave_C_Flags := $(Flags_Just_For_C) $(Common_C_Cpp_Flags) $(LFLAGS)
 
 Myenclave_Link_Flags := $(SGX_COMMON_CFLAGS) -Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -L$(SGX_LIBRARY_PATH) \
 	-Wl,--whole-archive -l$(Trts_Library_Name) -Wl,--no-whole-archive \

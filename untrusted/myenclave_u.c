@@ -334,13 +334,21 @@ static sgx_status_t SGX_CDECL myenclave_ocall_myenclave_sample(void* pms)
 	return SGX_SUCCESS;
 }
 
+static sgx_status_t SGX_CDECL myenclave_ocall_sleep(void* pms)
+{
+	if (pms != NULL) return SGX_ERROR_INVALID_PARAMETER;
+	ocall_sleep();
+	return SGX_SUCCESS;
+}
+
 static const struct {
 	size_t nr_ocall;
-	void * table[1];
+	void * table[2];
 } ocall_table_myenclave = {
-	1,
+	2,
 	{
 		(void*)myenclave_ocall_myenclave_sample,
+		(void*)myenclave_ocall_sleep,
 	}
 };
 sgx_status_t ecall_start_poller(sgx_enclave_id_t eid, int* retval, async_ecall* data)

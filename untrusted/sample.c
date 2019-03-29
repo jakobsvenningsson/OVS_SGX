@@ -8,11 +8,15 @@
 #include <stdarg.h>
 #include "sample.h"
 #include <stdint.h>
+#include <unistd.h>
 
 
 #include <pthread.h>
 
 #include "spinlock.h"
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 
 
 /* Global EID shared by multiple threads */
@@ -20,6 +24,12 @@ sgx_enclave_id_t global_eid = 0;
 
 static int enclave_status=10;
 
+
+void ocall_sleep() {
+  pthread_mutex_lock(&mutex);
+  pthread_cond_wait(&cond, &mutex);
+  pthread_mutex_unlock(&mutex);
+}
 
 
 static async_ecall ctx;
@@ -36,29 +46,35 @@ void *ecall_polling_thread(void *vargp) {
   }
 }
 
-static inline void _mm_pause(void) __attribute__((always_inline));
-static inline void _mm_pause(void)
-{
-    __asm __volatile(
-        "pause"
-    );
-}
-
 void make_hotcall(async_ecall *ctx, int function, argument_list *args, return_value *ret) {
   ctx->function = function;
   ctx->args = args;
   ctx->ret = ret;
   ctx->run = true;
   ctx->is_done = false;
+
   while(1) {
+
+    #ifdef TIMEOUT
+      if(ctx->sleeping) {
+        pthread_mutex_lock(&mutex);
+        pthread_cond_signal(&cond);
+        pthread_mutex_unlock(&mutex);
+        continue;
+      }
+    #endif
+
     sgx_spin_lock(&ctx->spinlock);
     if(ctx->is_done) {
       sgx_spin_unlock(&ctx->spinlock);
       break;
     }
     sgx_spin_unlock(&ctx->spinlock);
-    for(int i = 0; i<3; ++i)
-      _mm_pause();
+    for(int i = 0; i<3; ++i) {
+      __asm __volatile(
+          "pause"
+      );
+    }
   }
 }
 
@@ -89,9 +105,18 @@ int sgx_ofproto_init_tables(int n_tables)
    #ifdef HOTCALL
      puts("HOTCALLS ENABLED STARTING THREAD.");
      pthread_t thread_id;
+
+     pthread_attr_t attr;
+     pthread_attr_init(&attr);
+     pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+
      pthread_create(&thread_id, NULL, ecall_polling_thread, NULL);
    #else
     puts("NO HOTCALLS.");
+   #endif
+
+   #ifdef TIMEOUT
+    puts("TIMEOUT ENABLED");
    #endif
 
   return 0;

@@ -23,6 +23,10 @@ extern "C" {
 #define OCALL_MYENCLAVE_SAMPLE_DEFINED__
 void SGX_UBRIDGE(SGX_NOCONVENTION, ocall_myenclave_sample, (const char* str));
 #endif
+#ifndef OCALL_SLEEP_DEFINED__
+#define OCALL_SLEEP_DEFINED__
+void SGX_UBRIDGE(SGX_NOCONVENTION, ocall_sleep, (void));
+#endif
 
 sgx_status_t ecall_start_poller(sgx_enclave_id_t eid, int* retval, async_ecall* data);
 sgx_status_t ecall_myenclave_sample(sgx_enclave_id_t eid, int* retval);

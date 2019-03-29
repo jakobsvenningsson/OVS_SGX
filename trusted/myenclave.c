@@ -6,6 +6,12 @@
 #include "classifier.h"
 #include "ofproto-provider.h"
 
+
+#ifdef TIMEOUT
+#define INIT_TIMER_VALUE 9999999;
+static unsigned int timeout_counter = INIT_TIMER_VALUE;
+#endif
+
 //1. Definition of my hash_map table
 struct sgx_cls_table * SGX_hmap_table;
 
@@ -743,8 +749,6 @@ void ecall_ccfe_r(struct cls_rule **buf,int elem,int table_id){
 void
 ecall_oftable_set_name(int table_id, char *name)
 {
-		printf("BEG\n");
-		printf("%s\n", name);
     if (name && name[0]) {
         int len = strnlen(name, OFP_MAX_TABLE_NAME_LEN);
         if (!SGX_oftables[table_id].name || strncmp(name, SGX_oftables[table_id].name, len)) {
@@ -977,7 +981,6 @@ void ecall_SGX_table_dpif(int n_tables){
 //2. void ecall_table_update_taggable
 int ecall_table_update_taggable(uint8_t table_id){
 	//SGX_table_dpif[table_id]
-	printf("beg\n");
 	struct cls_table *catchall, *other;
 	struct cls_table *t;
 	catchall = other = NULL;
@@ -1000,8 +1003,6 @@ int ecall_table_update_taggable(uint8_t table_id){
 	default:
 		break;
     }
-		printf("mid\n");
-
 	if (SGX_table_dpif[table_id].catchall_table != catchall || SGX_table_dpif[table_id].other_table != other) {
 		SGX_table_dpif[table_id].catchall_table=catchall;
 		SGX_table_dpif[table_id].other_table=other;
@@ -1313,30 +1314,55 @@ void call_func(int function, argument_list *args, return_value *ret) {
   }
 }
 
-static inline void _mm_pause(void) __attribute__((always_inline));
-static inline void _mm_pause(void)
-{
-    __asm __volatile(
-        "pause"
-    );
-}
+
 
 int ecall_start_poller(async_ecall *ctx) {
+
+
+	//sgx_thread_mutex_init(&ctx->mutex, NULL);
+
   while(1) {
 		sgx_spin_lock(&ctx->spinlock);
+
     if(ctx->run) {
-			printf("Running function %d\n", ctx->function);
+			#ifdef TIMEOUT
+			timeout_counter = INIT_TIMER_VALUE;
+			#endif
+			//printf("Running function %d\n", ctx->function);
       ctx->run = false;
       call_func(ctx->function, ctx->args, ctx->ret);
       ctx->is_done = true;
 			sgx_spin_unlock(&ctx->spinlock);
-			printf("Running function %d done.\n", ctx->function);
+			//printf("Running function %d done.\n", ctx->function);
       continue;
     }
+
     sgx_spin_unlock(&ctx->spinlock);
-		for(int i = 0; i<3; ++i)
-			_mm_pause();
+
+		// Its recommended by intel to add pause actions inside spinlock loops in order to increase performance.
+		for(int i = 0; i<3; ++i) {
+			__asm __volatile(
+					"pause"
+			);
+		}
+
+		#ifdef TIMEOUT
+		timeout_counter--;
+		if(timeout_counter <= 0) {
+			printf("HOTCALL SERVICE SLEEPING.\n");
+			timeout_counter = INIT_TIMER_VALUE;
+			ctx->sleeping = true;
+			ocall_sleep();
+			ctx->sleeping = false;
+			//sgx_thread_mutex_lock(&ctx->mutex);
+			//sgx_thread_cond_wait(&ctx->cond, &ctx->mutex
+			//sgx_thread_mutex_unlock(&ctx->mutex);
+		}
+		#endif
   }
-  sgx_spin_unlock(&ctx->spinlock);
+
+
+	sgx_spin_unlock(&ctx->spinlock);
+
   return 0;
 }

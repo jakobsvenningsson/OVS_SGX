@@ -80,6 +80,7 @@ int ecall_ofproto_get_vlan_c(void);
 void ecall_ofproto_get_vlan_r(uint16_t* buf, int elem);
 
 sgx_status_t SGX_CDECL ocall_myenclave_sample(const char* str);
+sgx_status_t SGX_CDECL ocall_sleep(void);
 
 #ifdef __cplusplus
 }
