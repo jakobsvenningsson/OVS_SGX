@@ -175,7 +175,7 @@ static void oftable_enable_eviction(int table_id,
 #endif
 
 static void oftable_remove_rule(struct rule *);
-static struct rule *oftable_replace_rule(struct rule *);
+static struct rule *oftable_replace_rule(struct rule *, bool *);
 static void oftable_substitute_rule(struct rule *old, struct rule *new);
 
 /* A set of rules within a single OpenFlow table (oftable) that have the same
@@ -3465,12 +3465,7 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
     if (table->flags & OFTABLE_READONLY) {
         return OFPERR_OFPBRC_EPERM;
     }
-#else
-    if (SGX_istable_readonly(table_id)){
 
-    	return OFPERR_OFPBRC_EPERM;
-    }
-#endif
     /* Allocate new rule and initialize classifier rule. */
     rule = ofproto->ofproto_class->rule_alloc();
     if (!rule) {
@@ -3478,17 +3473,30 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
                      ofproto->name, strerror(error));
         return ENOMEM;
     }
-#ifndef SGX
+
     cls_rule_init(&rule->cr, &fm->match, fm->priority);
+
 #else
-    SGX_cls_rule_init(&rule->cr,&fm->match, fm->priority);
+    /* Allocate new rule and initialize classifier rule. */
+    rule = ofproto->ofproto_class->rule_alloc();
+    if (!rule) {
+        VLOG_WARN_RL(&rl, "%s: failed to create rule (%s)",
+                     ofproto->name, strerror(error));
+        return ENOMEM;
+    }
+    bool read_only = SGX_allocate_cls_rule_if_not_read_only(table_id, &rule->cr,&fm->match, fm->priority);
+    if(read_only) {
+      ofproto->ofproto_class->rule_dealloc(rule);
+      return OFPERR_OFPBRC_EPERM;
+    }
+
 #endif
     /* Serialize against pending deletion. */
     if (is_flow_deletion_pending(ofproto, &rule->cr, table_id)) {
 #ifndef  SGX
-    	cls_rule_destroy(&rule->cr);
+    	  cls_rule_destroy(&rule->cr);
 #else
-    	SGX_cls_rule_destroy(&rule->cr);
+    	  SGX_cls_rule_destroy(&rule->cr);
 #endif
         ofproto->ofproto_class->rule_dealloc(rule);
         return OFPROTO_POSTPONE;
@@ -3502,16 +3510,14 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
         && classifier_rule_overlaps(&table->cls, &rule->cr)) {
     	cls_rule_destroy(&rule->cr);
 #else
-    if (fm->flags & OFPFF_CHECK_OVERLAP
-            && SGX_cr_rule_overlaps(table_id,&rule->cr)) {
-    	SGX_cls_rule_destroy(&rule->cr);
+    if (fm->flags & OFPFF_CHECK_OVERLAP) {
+      SGX_destroy_rule_if_overlaps(table_id,&rule->cr);
 #endif
     	ofproto->ofproto_class->rule_dealloc(rule);
         return OFPERR_OFPFMFC_OVERLAP;
     }
 
     /* FIXME: Implement OFPFF12_RESET_COUNTS */
-
     rule->ofproto = ofproto;
     rule->pending = NULL;
     rule->flow_cookie = fm->new_cookie;
@@ -3536,8 +3542,11 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
     rule->modify_seqno = 0;
 
     /* Insert new rule. */
-    victim = oftable_replace_rule(rule);
-    if (victim && !rule_is_modifiable(victim)) {
+    // FIXME: MERGE rule_is_modifiable omtp  oftable_replace_rule
+    bool rule_is_mod;
+    victim = oftable_replace_rule(rule, &rule_is_mod);
+    //!rule_is_modifiable(victim)
+    if (victim && !rule_is_mod) {
         error = OFPERR_OFPBRC_EPERM;
     } else if (victim && victim->pending) {
         error = OFPROTO_POSTPONE;
@@ -3552,21 +3561,21 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
             evict = choose_rule_to_evict(table);
             rule->evictable = was_evictable;
 #else
-            if (SGX_cls_count(table_id)> SGX_table_mflows(table_id)){
-            	struct cls_rule *cls_rule_temp;
-            	SGX_choose_rule_to_evict_p(table_id,cls_rule_temp);
-            	evict=rule_from_cls_rule(cls_rule_temp);
+            struct cls_rule *cls_rule_temp;
+            bool evict_rule = SGX_get_rule_to_evict_if_neccesary(table_id, cls_rule_temp);
+            if(evict_rule) {
+              evict = rule_from_cls_rule(cls_rule_temp);
 #endif
-            if (!evict) {
-                error = OFPERR_OFPFMFC_TABLE_FULL;
-                goto exit;
-            } else if (evict->pending) {
-                error = OFPROTO_POSTPONE;
-                goto exit;
-            }
-        } else {
-            evict = NULL;
-        }
+              if (!evict) {
+                  error = OFPERR_OFPFMFC_TABLE_FULL;
+                  goto exit;
+              } else if (evict->pending) {
+                  error = OFPROTO_POSTPONE;
+                  goto exit;
+              }
+          } else {
+              evict = NULL;
+          }
 
         group = ofopgroup_create(ofproto, ofconn, request, fm->buffer_id);
         op = ofoperation_create(group, rule, OFOPERATION_ADD, 0);
@@ -3814,7 +3823,7 @@ ofproto_rule_send_removed(struct rule *rule, uint8_t reason)
 {
     struct ofputil_flow_removed fr;
 
-    if (ofproto_rule_is_hidden(rule) || !rule->send_flow_removed) {
+    if (!rule->send_flow_removed || ofproto_rule_is_hidden(rule)) {
         return;
     }
 #ifndef SGX
@@ -4709,7 +4718,6 @@ ofopgroup_complete(struct ofopgroup *group)
 
     if (!error && !list_is_empty(&group->ofconn_node)) {
         abbrev_ofconn = group->ofconn;
-        abbrev_xid = group->request->xid;
     } else {
         abbrev_ofconn = NULL;
         abbrev_xid = htonl(0);
@@ -4726,12 +4734,10 @@ ofopgroup_complete(struct ofopgroup *group)
               - The affected rule is not visible to controllers.
 
               - The operation's only effect was to update rule->modified. */
-
         if (!(op->error
-              || ofproto_rule_is_hidden(rule)
               || (op->type == OFOPERATION_MODIFY
                   && !op->ofpacts
-                  && rule->flow_cookie == op->flow_cookie))) {
+                  && rule->flow_cookie == op->flow_cookie)) || ofproto_rule_is_hidden(rule)) {
             /* Check that we can just cast from ofoperation_type to
              * nx_flow_update_event. */
             BUILD_ASSERT_DECL((enum nx_flow_update_event) OFOPERATION_ADD
@@ -5248,7 +5254,7 @@ eviction_group_add_rule(struct rule *rule)
     }
 #else
 
-    if(SGX_eviction_fields_enable(rule->table_id) && (rule->hard_timeout || rule->idle_timeout)) {
+    if((rule->hard_timeout || rule->idle_timeout) && SGX_eviction_fields_enable(rule->table_id)) {
     	size_t result=SGX_evg_add_rule(rule->table_id,&rule->cr,eviction_group_priority(0),
     	    			rule_eviction_priority(rule),rule->evg_node);
 
@@ -5402,10 +5408,13 @@ oftable_remove_rule(struct rule *rule)
     struct oftable *table = &ofproto->tables[rule->table_id];
 
     classifier_remove(&table->cls, &rule->cr);
-#else
-    SGX_cls_remove(rule->table_id,&rule->cr);
-#endif
     eviction_group_remove_rule(rule);
+
+#else
+    // FIXME: COMBINE
+    SGX_cls_remove(rule->table_id,&rule->cr);
+    eviction_group_remove_rule(rule);
+#endif
     if (!list_is_empty(&rule->expirable)) {
         list_remove(&rule->expirable);
     }
@@ -5415,7 +5424,7 @@ oftable_remove_rule(struct rule *rule)
  * oftable that has an identical cls_rule.  Returns the rule that was removed,
  * if any, and otherwise NULL. */
 static struct rule *
-oftable_replace_rule(struct rule *rule)
+oftable_replace_rule(struct rule *rule, bool *rule_is_modifiable)
 {
     struct ofproto *ofproto = rule->ofproto;
 
@@ -5432,7 +5441,10 @@ oftable_replace_rule(struct rule *rule)
 
     struct cls_rule * sgx_cls_rule; //An auxiliary cls_rule....
 
-    SGX_classifier_replace(rule->table_id,&rule->cr,&sgx_cls_rule);
+    //SGX_classifier_replace(rule->table_id,&rule->cr,&sgx_cls_rule);
+    SGX_classifer_replace_if_modifiable(rule->table_id,&rule->cr,&sgx_cls_rule, rule_is_modifiable);
+    //*rule_is_modifiable = rule_is_modifiable(victim);
+
     victim = rule_from_cls_rule(sgx_cls_rule);
 
 #endif
@@ -5454,7 +5466,9 @@ static void
 oftable_substitute_rule(struct rule *old, struct rule *new)
 {
     if (new) {
-        oftable_replace_rule(new);
+        // Dummy variable
+        bool rule_is_modifiable;
+        oftable_replace_rule(new, &rule_is_modifiable);
     } else {
         oftable_remove_rule(old);
     }

@@ -1,14 +1,16 @@
-#ifndef MYENCLAVE_T_H__
-#define MYENCLAVE_T_H__
+#ifndef ENCLAVE_T_H__
+#define ENCLAVE_T_H__
 
 #include <stdint.h>
 #include <wchar.h>
 #include <stddef.h>
 #include "sgx_edger8r.h" /* for sgx_ocall etc. */
 
+#include "stdbool.h"
 #include "common.h"
 #include "../trusted/lib/classifier.h"
 #include "../trusted/lib/ofproto-provider.h"
+#include "call-table.h"
 
 #include <stdlib.h> /* for size_t */
 
@@ -19,7 +21,11 @@ extern "C" {
 #endif
 
 int ecall_start_poller(async_ecall* data);
-int ecall_myenclave_sample(void);
+void ecall_destroy_rule_if_overlaps(int table_id, struct cls_rule* o_cls_rule);
+bool ecall_get_rule_to_evict_if_neccesary(int table_id, struct cls_rule* o_cls_rule);
+uint32_t ecall_miniflow_expand_and_tag(struct cls_rule* o_cls_rule, struct flow* flow, int table_id);
+bool ecall_allocate_cls_rule_if_not_read_only(int table_id, struct cls_rule* o_cls_rule, struct match* match, unsigned int priority);
+void ecall_classifer_replace_if_modifiable(int table_id, struct cls_rule* o_cls_rule, struct cls_rule** cls_rule_rtrn, bool* rule_is_modifiable);
 void ecall_ofproto_init_tables(int n_tables);
 void ecall_readonly_set(int table_id);
 int ecall_istable_readonly(uint8_t table_id);

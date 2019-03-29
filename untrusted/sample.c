@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <libgen.h>
 #include "sgx_utils.h"
-#include "myenclave_u.h"
+#include "enclave_u.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -106,9 +106,9 @@ int sgx_ofproto_init_tables(int n_tables)
      puts("HOTCALLS ENABLED STARTING THREAD.");
      pthread_t thread_id;
 
-     pthread_attr_t attr;
+     /*pthread_attr_t attr;
      pthread_attr_init(&attr);
-     pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+     pthread_attr_setschedpolicy(&attr, SCHED_FIFO);*/
 
      pthread_create(&thread_id, NULL, ecall_polling_thread, NULL);
    #else
@@ -120,19 +120,6 @@ int sgx_ofproto_init_tables(int n_tables)
    #endif
 
   return 0;
-}
-
-
-
-
-/////////////////////////////////////////////////////////////////////////////
-/* OCall functions */
-void ocall_myenclave_sample(const char *str)
-{
-    /* Prox/Bridge will check the length and null-terminate
-     * the input string to prevent buffer overflow.
-     */
-    printf("%s", str);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -1172,7 +1159,7 @@ int SGX_ofproto_get_vlan_usage_c(void){
     return ecall_return;
   #else
     int count;
-  	ecall_ofproto_get_vlan_c(global_eid,&count);
+  	ecall_ofproto_get_vlan_c(global_eid, &count);
   	return count;
   #endif
 }
@@ -1188,5 +1175,103 @@ void SGX_ofproto_get_vlan_usage__r(uint16_t *buf,int elem){
       make_hotcall(&ctx, ECALL_OFPROTO_GET_VLAN_R, &args, NULL);
   #else
     ecall_ofproto_get_vlan_r(global_eid, buf, elem);
+  #endif
+}
+
+
+// Optimized ecalls
+
+void SGX_destroy_rule_if_overlaps(int table_id, struct cls_rule * o_cls_rule) {
+  #ifdef HOTCALL
+      argument_list args = {
+        .n_args = 2,
+        .arg1 = (void *) &table_id,
+        .arg2 = (void *) o_cls_rule,
+      };
+      make_hotcall(&ctx, ECALL_DESTROY_RULE_IF_OVERLAPS, &args, NULL);
+  #else
+    ecall_destroy_rule_if_overlaps(global_eid, table_id, o_cls_rule);
+  #endif
+}
+
+
+bool SGX_get_rule_to_evict_if_neccesary(int table_id, struct cls_rule *ret_rule) {
+  #ifdef HOTCALL
+    argument_list args = {
+      .n_args = 2,
+      .arg1 = (void *) &table_id,
+      .arg2 = (void *) ret_rule,
+    };
+    bool ecall_return;
+    return_value ret = {
+      .allocated_size = 0,
+      .val = (void *) &ecall_return
+    };
+    make_hotcall(&ctx, ECALL_GET_RULE_TO_EVICT_IF_NECCESARY, &args, &ret);
+    return ecall_return;
+  #else
+    bool ecall_return;
+    ecall_get_rule_to_evict_if_neccesary(global_eid, &ecall_return, table_id, ret_rule);
+    return ecall_return;
+  #endif
+}
+
+uint32_t SGX_miniflow_expand_and_tag(struct cls_rule *o_cls_rule, struct flow *flow, int table_id) {
+  #ifdef HOTCALL
+    argument_list args = {
+      .n_args = 3,
+      .arg1 = (void *) o_cls_rule,
+      .arg2 = (void *) flow,
+      .arg3 = (void *) &table_id,
+    };
+    uint32_t ecall_return;
+    return_value ret = {
+      .allocated_size = 0,
+      .val = (void *) &ecall_return
+    };
+    make_hotcall(&ctx, ECALL_MINIFLOW_EXPAND_AND_TAG, &args, &ret);
+    return ecall_return;
+  #else
+    uint32_t ecall_return;
+    ecall_miniflow_expand_and_tag(global_eid, &ecall_return, o_cls_rule, flow, table_id);
+    return ecall_return;
+  #endif
+}
+
+bool SGX_allocate_cls_rule_if_not_read_only(int table_id, struct cls_rule *o_cls_rule, struct match *match, unsigned int priority) {
+  #ifdef HOTCALL
+    argument_list args = {
+      .n_args = 4,
+      .arg1 = (void *) &table_id,
+      .arg2 = (void *) o_cls_rule,
+      .arg3 = (void *) match,
+      .arg4 = (void *) &priority
+    };
+    bool ecall_return;
+    return_value ret = {
+      .allocated_size = 0,
+      .val = (void *) &ecall_return
+    };
+    make_hotcall(&ctx, ECALL_ALLOCATE_CLS_RULE_IF_NOT_READ_ONLY, &args, &ret);
+    return ecall_return;
+  #else
+    bool ecall_return;
+    ecall_allocate_cls_rule_if_not_read_only(global_eid, &ecall_return, table_id, o_cls_rule, match, priority);
+    return ecall_return;
+  #endif
+}
+
+void SGX_classifer_replace_if_modifiable(int table_id, struct cls_rule* o_cls_rule, struct cls_rule ** cls_rule_rtrn, bool *rule_is_modifiable){
+  #ifdef HOTCALL
+  argument_list args = {
+    .n_args = 4,
+    .arg1 = (void *) &table_id,
+    .arg2 = (void *) o_cls_rule,
+    .arg3 = (void *) cls_rule_rtrn,
+    .arg4 = (void *) rule_is_modifiable
+  };
+  make_hotcall(&ctx, ECALL_CLASSIFIER_REPLACE_IF_MODIFIABLE, &args, NULL);
+  #else
+  ecall_classifer_replace_if_modifiable(global_eid, table_id, o_cls_rule, cls_rule_rtrn, rule_is_modifiable);
   #endif
 }

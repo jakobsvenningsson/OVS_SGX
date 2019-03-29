@@ -1,4 +1,4 @@
-#include "myenclave_t.h"
+#include "enclave_t.h"
 
 #include "sgx_trts.h" /* for sgx_ocalloc, sgx_is_outside_enclave */
 #include "sgx_lfence.h" /* for sgx_lfence */
@@ -28,9 +28,38 @@ typedef struct ms_ecall_start_poller_t {
 	async_ecall* ms_data;
 } ms_ecall_start_poller_t;
 
-typedef struct ms_ecall_myenclave_sample_t {
-	int ms_retval;
-} ms_ecall_myenclave_sample_t;
+typedef struct ms_ecall_destroy_rule_if_overlaps_t {
+	int ms_table_id;
+	struct cls_rule* ms_o_cls_rule;
+} ms_ecall_destroy_rule_if_overlaps_t;
+
+typedef struct ms_ecall_get_rule_to_evict_if_neccesary_t {
+	bool ms_retval;
+	int ms_table_id;
+	struct cls_rule* ms_o_cls_rule;
+} ms_ecall_get_rule_to_evict_if_neccesary_t;
+
+typedef struct ms_ecall_miniflow_expand_and_tag_t {
+	uint32_t ms_retval;
+	struct cls_rule* ms_o_cls_rule;
+	struct flow* ms_flow;
+	int ms_table_id;
+} ms_ecall_miniflow_expand_and_tag_t;
+
+typedef struct ms_ecall_allocate_cls_rule_if_not_read_only_t {
+	bool ms_retval;
+	int ms_table_id;
+	struct cls_rule* ms_o_cls_rule;
+	struct match* ms_match;
+	unsigned int ms_priority;
+} ms_ecall_allocate_cls_rule_if_not_read_only_t;
+
+typedef struct ms_ecall_classifer_replace_if_modifiable_t {
+	int ms_table_id;
+	struct cls_rule* ms_o_cls_rule;
+	struct cls_rule** ms_cls_rule_rtrn;
+	bool* ms_rule_is_modifiable;
+} ms_ecall_classifer_replace_if_modifiable_t;
 
 typedef struct ms_ecall_ofproto_init_tables_t {
 	int ms_n_tables;
@@ -367,19 +396,100 @@ static sgx_status_t SGX_CDECL sgx_ecall_start_poller(void* pms)
 	return status;
 }
 
-static sgx_status_t SGX_CDECL sgx_ecall_myenclave_sample(void* pms)
+static sgx_status_t SGX_CDECL sgx_ecall_destroy_rule_if_overlaps(void* pms)
 {
-	CHECK_REF_POINTER(pms, sizeof(ms_ecall_myenclave_sample_t));
+	CHECK_REF_POINTER(pms, sizeof(ms_ecall_destroy_rule_if_overlaps_t));
 	//
 	// fence after pointer checks
 	//
 	sgx_lfence();
-	ms_ecall_myenclave_sample_t* ms = SGX_CAST(ms_ecall_myenclave_sample_t*, pms);
+	ms_ecall_destroy_rule_if_overlaps_t* ms = SGX_CAST(ms_ecall_destroy_rule_if_overlaps_t*, pms);
 	sgx_status_t status = SGX_SUCCESS;
+	struct cls_rule* _tmp_o_cls_rule = ms->ms_o_cls_rule;
 
 
 
-	ms->ms_retval = ecall_myenclave_sample();
+	ecall_destroy_rule_if_overlaps(ms->ms_table_id, _tmp_o_cls_rule);
+
+
+	return status;
+}
+
+static sgx_status_t SGX_CDECL sgx_ecall_get_rule_to_evict_if_neccesary(void* pms)
+{
+	CHECK_REF_POINTER(pms, sizeof(ms_ecall_get_rule_to_evict_if_neccesary_t));
+	//
+	// fence after pointer checks
+	//
+	sgx_lfence();
+	ms_ecall_get_rule_to_evict_if_neccesary_t* ms = SGX_CAST(ms_ecall_get_rule_to_evict_if_neccesary_t*, pms);
+	sgx_status_t status = SGX_SUCCESS;
+	struct cls_rule* _tmp_o_cls_rule = ms->ms_o_cls_rule;
+
+
+
+	ms->ms_retval = ecall_get_rule_to_evict_if_neccesary(ms->ms_table_id, _tmp_o_cls_rule);
+
+
+	return status;
+}
+
+static sgx_status_t SGX_CDECL sgx_ecall_miniflow_expand_and_tag(void* pms)
+{
+	CHECK_REF_POINTER(pms, sizeof(ms_ecall_miniflow_expand_and_tag_t));
+	//
+	// fence after pointer checks
+	//
+	sgx_lfence();
+	ms_ecall_miniflow_expand_and_tag_t* ms = SGX_CAST(ms_ecall_miniflow_expand_and_tag_t*, pms);
+	sgx_status_t status = SGX_SUCCESS;
+	struct cls_rule* _tmp_o_cls_rule = ms->ms_o_cls_rule;
+	struct flow* _tmp_flow = ms->ms_flow;
+
+
+
+	ms->ms_retval = ecall_miniflow_expand_and_tag(_tmp_o_cls_rule, _tmp_flow, ms->ms_table_id);
+
+
+	return status;
+}
+
+static sgx_status_t SGX_CDECL sgx_ecall_allocate_cls_rule_if_not_read_only(void* pms)
+{
+	CHECK_REF_POINTER(pms, sizeof(ms_ecall_allocate_cls_rule_if_not_read_only_t));
+	//
+	// fence after pointer checks
+	//
+	sgx_lfence();
+	ms_ecall_allocate_cls_rule_if_not_read_only_t* ms = SGX_CAST(ms_ecall_allocate_cls_rule_if_not_read_only_t*, pms);
+	sgx_status_t status = SGX_SUCCESS;
+	struct cls_rule* _tmp_o_cls_rule = ms->ms_o_cls_rule;
+	struct match* _tmp_match = ms->ms_match;
+
+
+
+	ms->ms_retval = ecall_allocate_cls_rule_if_not_read_only(ms->ms_table_id, _tmp_o_cls_rule, _tmp_match, ms->ms_priority);
+
+
+	return status;
+}
+
+static sgx_status_t SGX_CDECL sgx_ecall_classifer_replace_if_modifiable(void* pms)
+{
+	CHECK_REF_POINTER(pms, sizeof(ms_ecall_classifer_replace_if_modifiable_t));
+	//
+	// fence after pointer checks
+	//
+	sgx_lfence();
+	ms_ecall_classifer_replace_if_modifiable_t* ms = SGX_CAST(ms_ecall_classifer_replace_if_modifiable_t*, pms);
+	sgx_status_t status = SGX_SUCCESS;
+	struct cls_rule* _tmp_o_cls_rule = ms->ms_o_cls_rule;
+	struct cls_rule** _tmp_cls_rule_rtrn = ms->ms_cls_rule_rtrn;
+	bool* _tmp_rule_is_modifiable = ms->ms_rule_is_modifiable;
+
+
+
+	ecall_classifer_replace_if_modifiable(ms->ms_table_id, _tmp_o_cls_rule, _tmp_cls_rule_rtrn, _tmp_rule_is_modifiable);
 
 
 	return status;
@@ -1486,12 +1596,16 @@ static sgx_status_t SGX_CDECL sgx_ecall_ofproto_get_vlan_r(void* pms)
 
 SGX_EXTERNC const struct {
 	size_t nr_ecall;
-	struct {void* ecall_addr; uint8_t is_priv;} ecall_table[60];
+	struct {void* ecall_addr; uint8_t is_priv;} ecall_table[64];
 } g_ecall_table = {
-	60,
+	64,
 	{
 		{(void*)(uintptr_t)sgx_ecall_start_poller, 0},
-		{(void*)(uintptr_t)sgx_ecall_myenclave_sample, 0},
+		{(void*)(uintptr_t)sgx_ecall_destroy_rule_if_overlaps, 0},
+		{(void*)(uintptr_t)sgx_ecall_get_rule_to_evict_if_neccesary, 0},
+		{(void*)(uintptr_t)sgx_ecall_miniflow_expand_and_tag, 0},
+		{(void*)(uintptr_t)sgx_ecall_allocate_cls_rule_if_not_read_only, 0},
+		{(void*)(uintptr_t)sgx_ecall_classifer_replace_if_modifiable, 1},
 		{(void*)(uintptr_t)sgx_ecall_ofproto_init_tables, 0},
 		{(void*)(uintptr_t)sgx_ecall_readonly_set, 0},
 		{(void*)(uintptr_t)sgx_ecall_istable_readonly, 0},
@@ -1555,12 +1669,12 @@ SGX_EXTERNC const struct {
 
 SGX_EXTERNC const struct {
 	size_t nr_ocall;
-	uint8_t entry_table[2][60];
+	uint8_t entry_table[2][64];
 } g_dyn_entry_table = {
 	2,
 	{
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
 	}
 };
 

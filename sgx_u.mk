@@ -42,7 +42,7 @@ else
 	Urts_Library_Name := sgx_urts
 endif
 
-App_C_Files := $(UNTRUSTED_DIR)/sample.c $(UNTRUSTED_DIR)/sgx_utils.c $(UNTRUSTED_DIR)/spinlock.c
+App_C_Files := $(UNTRUSTED_DIR)/sample.c $(UNTRUSTED_DIR)/sgx_utils.c $(UNTRUSTED_DIR)/spinlock.c $(UNTRUSTED_DIR)/ocall.c
 App_Include_Paths := -Iinclude -I$(UNTRUSTED_DIR) -I$(SGX_SDK)/include
 
 App_C_Flags := $(SGX_COMMON_CFLAGS) -fPIC -Wno-attributes $(App_Include_Paths) $(LFLAGS)
@@ -88,7 +88,7 @@ all: link #check this
 	@echo "Build sample [$(Build_Mode)|$(SGX_ARCH)] success!"
 	@echo
 	@echo "*********************************************************************************************************************************************************"
-	@echo "PLEASE NOTE: In this mode, please sign the myenclave.so first using Two Step Sign mechanism before you run the app to launch and access the enclave."
+	@echo "PLEASE NOTE: In this mode, please sign the enclave.so first using Two Step Sign mechanism before you run the app to launch and access the enclave."
 	@echo "*********************************************************************************************************************************************************"
 	@echo
 
@@ -105,11 +105,11 @@ endif
 
 ######## App Objects ########
 
-$(UNTRUSTED_DIR)/myenclave_u.c: $(SGX_EDGER8R) trusted/myenclave.edl
-	@cd $(UNTRUSTED_DIR) && $(SGX_EDGER8R) --untrusted ../trusted/myenclave.edl --search-path ../trusted --search-path $(SGX_SDK)/include
+$(UNTRUSTED_DIR)/enclave_u.c: $(SGX_EDGER8R) trusted/enclave.edl
+	@cd $(UNTRUSTED_DIR) && $(SGX_EDGER8R) --untrusted ../trusted/enclave.edl --search-path ../trusted --search-path $(SGX_SDK)/include
 	@echo "GEN  =>  $@"
 
-$(UNTRUSTED_DIR)/myenclave_u.o: $(UNTRUSTED_DIR)/myenclave_u.c
+$(UNTRUSTED_DIR)/enclave.o: $(UNTRUSTED_DIR)/enclave.c
 	@$(CC) $(App_C_Flags) -c $< -o $@
 	@echo "CC   <=  $<"
 
@@ -121,25 +121,31 @@ $(UNTRUSTED_DIR)/%.o: $(UNTRUSTED_DIR)/%.c
 	@echo "CXX  <=  $<"
 
 # Making an EXE
-#link: $(UNTRUSTED_DIR)/myenclave_u.o $(App_C_Objects)
+#link: $(UNTRUSTED_DIR)/enclave_u.o $(App_C_Objects)
 #	@$(CC) $^ -o medina $(App_Link_Flags)
 #	@echo "LINK =>  $@"
 
 #Compile with pthread
-link : $(UNTRUSTED_DIR)/myenclave_u.o $(App_C_Objects)
-	@ar rcsv libOFTonSGX.a $(UNTRUSTED_DIR)/myenclave_u.o $(UNTRUSTED_DIR)/sample.o $(UNTRUSTED_DIR)/spinlock.o $(UNTRUSTED_DIR)/sgx_utils.o /opt/intel/sgxsdk/lib64/libsgx_urts.so /opt/intel/sgxsdk/lib64/libsgx_uae_service.so
+link : $(UNTRUSTED_DIR)/enclave_u.o $(App_C_Objects)
+	@ar rcsv libOFTonSGX.a $(UNTRUSTED_DIR)/enclave_u.o \
+												 $(UNTRUSTED_DIR)/sample.o \
+												 $(UNTRUSTED_DIR)/spinlock.o \
+												 $(UNTRUSTED_DIR)/sgx_utils.o \
+												 $(UNTRUSTED_DIR)/ocall.o \
+												 /opt/intel/sgxsdk/lib64/libsgx_urts.so \
+												 /opt/intel/sgxsdk/lib64/libsgx_uae_service.so
 
 #THIS is another way
-#link : $(UNTRUSTED_DIR)/myenclave_u.o $(App_C_Objects)
-#	@$(CC) -fPIC -shared -o libsample.so $(UNTRUSTED_DIR)/myenclave_u.o $(UNTRUSTED_DIR)/sample.o $(UNTRUSTED_DIR)/sgx_utils.o -lpthread
+#link : $(UNTRUSTED_DIR)/enclave_u.o $(App_C_Objects)
+#	@$(CC) -fPIC -shared -o libsample.so $(UNTRUSTED_DIR)/enclave_u.o $(UNTRUSTED_DIR)/sample.o $(UNTRUSTED_DIR)/sgx_utils.o -lpthread
 #	@echo "LINK => $@"
 
 
 .PHONY: clean
 
 clean:
-	#@rm -f sample  $(App_C_Objects) $(UNTRUSTED_DIR)/myenclave_u.*
-	@rm -f link  $(App_C_Objects) $(UNTRUSTED_DIR)/myenclave_u.* libsample.a
+	#@rm -f sample  $(App_C_Objects) $(UNTRUSTED_DIR)/enclave_u.*
+	@rm -f link  $(App_C_Objects) $(UNTRUSTED_DIR)/enclave_u.* libsample.a
 
 #wrapper_sim:
-#	@ar rcsv untrusted/libwrapper_sgx.a untrusted/sample.o untrusted/sgx_utils.o untrusted/myenclave_u.o /opt/intel/sgxsdk/lib64/libsgx_urts_sim.so  /opt/intel/sgxsdk/lib64/libsgx_uae_service_sim.so
+#	@ar rcsv untrusted/libwrapper_sgx.a untrusted/sample.o untrusted/sgx_utils.o untrusted/enclave_u.o /opt/intel/sgxsdk/lib64/libsgx_urts_sim.so  /opt/intel/sgxsdk/lib64/libsgx_uae_service_sim.so

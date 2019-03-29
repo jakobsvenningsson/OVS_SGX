@@ -1,5 +1,5 @@
-#ifndef MYENCLAVE_U_H__
-#define MYENCLAVE_U_H__
+#ifndef ENCLAVE_U_H__
+#define ENCLAVE_U_H__
 
 #include <stdint.h>
 #include <wchar.h>
@@ -7,9 +7,11 @@
 #include <string.h>
 #include "sgx_edger8r.h" /* for sgx_satus_t etc. */
 
+#include "stdbool.h"
 #include "common.h"
 #include "../trusted/lib/classifier.h"
 #include "../trusted/lib/ofproto-provider.h"
+#include "ocall.h"
 
 #include <stdlib.h> /* for size_t */
 
@@ -29,7 +31,11 @@ void SGX_UBRIDGE(SGX_NOCONVENTION, ocall_sleep, (void));
 #endif
 
 sgx_status_t ecall_start_poller(sgx_enclave_id_t eid, int* retval, async_ecall* data);
-sgx_status_t ecall_myenclave_sample(sgx_enclave_id_t eid, int* retval);
+sgx_status_t ecall_destroy_rule_if_overlaps(sgx_enclave_id_t eid, int table_id, struct cls_rule* o_cls_rule);
+sgx_status_t ecall_get_rule_to_evict_if_neccesary(sgx_enclave_id_t eid, bool* retval, int table_id, struct cls_rule* o_cls_rule);
+sgx_status_t ecall_miniflow_expand_and_tag(sgx_enclave_id_t eid, uint32_t* retval, struct cls_rule* o_cls_rule, struct flow* flow, int table_id);
+sgx_status_t ecall_allocate_cls_rule_if_not_read_only(sgx_enclave_id_t eid, bool* retval, int table_id, struct cls_rule* o_cls_rule, struct match* match, unsigned int priority);
+sgx_status_t ecall_classifer_replace_if_modifiable(sgx_enclave_id_t eid, int table_id, struct cls_rule* o_cls_rule, struct cls_rule** cls_rule_rtrn, bool* rule_is_modifiable);
 sgx_status_t ecall_ofproto_init_tables(sgx_enclave_id_t eid, int n_tables);
 sgx_status_t ecall_readonly_set(sgx_enclave_id_t eid, int table_id);
 sgx_status_t ecall_istable_readonly(sgx_enclave_id_t eid, int* retval, uint8_t table_id);

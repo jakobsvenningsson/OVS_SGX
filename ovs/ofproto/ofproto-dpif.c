@@ -5802,9 +5802,9 @@ rule_construct(struct rule *rule_)
                                        ofproto->tables[table_id].basis);
 #else
 
-        SGX_miniflow_expand(&rule->up.cr,&flow);
-        uint32_t hash;
-		hash=SGX_rule_calculate_tag(&rule->up.cr,&flow,table_id);
+
+    uint32_t hash;
+    hash = SGX_miniflow_expand_and_tag(&rule->up.cr,&flow, table_id);
 
 		if(hash){
 			rule->tag=tag_create_deterministic(hash);
@@ -8182,19 +8182,15 @@ rule_invalidate(const struct rule_dpif *rule)
     }
 #endif
     if (!ofproto->backer->need_revalidate) {
-
 #ifndef SGX
-
-        struct table_dpif *table = &ofproto->tables[rule->up.table_id];
-        if (table->other_table && rule->tag) {
-
+      struct table_dpif *table = &ofproto->tables[rule->up.table_id];
+      if (table->other_table && rule->tag) {
 #else
-      if(SGX_is_sgx_other_table(rule->up.table_id)&& rule->tag){
-
+        if(SGX_is_sgx_other_table(rule->up.table_id)&& rule->tag){
 #endif
-        	tag_set_add(&ofproto->backer->revalidate_set, rule->tag);
+          tag_set_add(&ofproto->backer->revalidate_set, rule->tag);
         } else {
-            ofproto->backer->need_revalidate = REV_FLOW_TABLE;
+              ofproto->backer->need_revalidate = REV_FLOW_TABLE;
         }
     }
 }

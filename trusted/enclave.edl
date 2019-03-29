@@ -1,6 +1,7 @@
-/* myenclave.edl - Top EDL file. */
+/* enclave.edl - Top EDL file. */
 
 enclave {
+	include "stdbool.h"
 	include "common.h"
 	include "../trusted/lib/classifier.h"
 	include "../trusted/lib/ofproto-provider.h"
@@ -10,22 +11,24 @@ enclave {
      *  [string]: specifies 'str' is a NULL terminated buffer.
      */
     untrusted {
+				include "ocall.h"
         void ocall_myenclave_sample([in, string] const char *str);
-				//void sgx_thread_wait_untrusted_event_ocall();
-				//void sgx_thread_set_untrusted_event_ocall();
-				//void sgx_thread_mutex_wait();
-				//void sgx_thread_setwait_untrusted_events_ocall();
-				//void sgx_thread_set_multiple_untrusted_events_ocall();
 				void ocall_sleep();
-
     };
 
 
     trusted {
+					include "call-table.h"
+
 					public int ecall_start_poller([user_check] async_ecall *data);
 
+					public void ecall_destroy_rule_if_overlaps(int table_id, [user_check] struct cls_rule * o_cls_rule);
+					public bool ecall_get_rule_to_evict_if_neccesary(int table_id, [user_check] struct cls_rule * o_cls_rule);
+					public uint32_t ecall_miniflow_expand_and_tag([user_check] struct cls_rule *o_cls_rule, [user_check] struct flow *flow, int table_id);
+					public bool ecall_allocate_cls_rule_if_not_read_only(int table_id, [user_check] struct cls_rule *o_cls_rule, [user_check] struct match *match, unsigned int priority);
 
-    	    public int ecall_myenclave_sample();
+					void ecall_classifer_replace_if_modifiable(int table_id, [user_check] struct cls_rule* o_cls_rule,  [user_check] struct cls_rule ** cls_rule_rtrn,  [user_check] bool *rule_is_modifiable);
+
     	    public void ecall_ofproto_init_tables(int n_tables);
     	    public void ecall_readonly_set(int table_id);
     	    public int ecall_istable_readonly(uint8_t table_id);

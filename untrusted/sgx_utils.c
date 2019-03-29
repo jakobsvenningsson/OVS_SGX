@@ -15,8 +15,8 @@
 # define FALSE 0
 #endif
 
-# define TOKEN_FILENAME   "myenclave.token"
-# define ENCLAVE_FILENAME "myenclave.signed.so"
+# define TOKEN_FILENAME   "enclave.token"
+# define ENCLAVE_FILENAME "enclave.signed.so"
 
 # define MAX_PATH FILENAME_MAX
 

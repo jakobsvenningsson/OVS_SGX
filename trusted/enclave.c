@@ -1,114 +1,25 @@
 #include <stdarg.h>
 #include <stdio.h>      /* vsnprintf */
-#include "myenclave.h"
-#include "myenclave_t.h"  /* print_string */
+#include "enclave.h"
+#include "enclave_t.h"  /* print_string */
 #include <stdbool.h>
 #include "classifier.h"
 #include "ofproto-provider.h"
-
+#include "enclave-utils.h"
+#include "helpers.h"
+#include "call-table.h"
+#include <sgx_spinlock.h>
 
 #ifdef TIMEOUT
 #define INIT_TIMER_VALUE 9999999;
 static unsigned int timeout_counter = INIT_TIMER_VALUE;
 #endif
 
-//1. Definition of my hash_map table
+
 struct sgx_cls_table * SGX_hmap_table;
-
-//*************SGX_cls_rule Methods*************************************************************
-
-//1. Initialization of hmap table
-void sgx_table_cls_init(){
-	SGX_hmap_table = xmalloc(sizeof(struct sgx_cls_table));
-	hmap_init(&SGX_hmap_table->cls_rules);
-}
-
-/*2. Node_search: This method is in charge of the searching of a cls_rule based on
- hash computed from the pointer holding the cls_rule in untrusted memory
-*/
-struct sgx_cls_rule* node_search(const struct cls_rule *out){
-	struct sgx_cls_rule *rule;
-	HMAP_FOR_EACH_WITH_HASH(rule,hmap_node,hash_pointer(out,0),&SGX_hmap_table->cls_rules){
-		return rule;
-	}
-	return NULL;
-}
-
-//3. Node_search_evict: Searches for a rule that match the struct eviction_group pointer
-struct sgx_cls_rule* node_search_evict(struct eviction_group *out){
-	struct sgx_cls_rule *rule;
-	HMAP_FOR_EACH(rule,hmap_node,&SGX_hmap_table->cls_rules){
-		if(rule->evict_group==out){
-			return rule;
-		}
-	}
-	return NULL;
-}
-
-//4. Node_insert: This function insert a new sgx_cls_rule to the hmap table.
-struct sgx_cls_rule* node_insert(uint32_t hash){
-	struct sgx_cls_rule * new=xmalloc(sizeof(struct sgx_cls_rule));
-	memset(new,0,sizeof(struct sgx_cls_rule));
-	new->hmap_node.hash=hash;
-	//We can find if the rule is already installed.
-
-	hmap_insert(&SGX_hmap_table->cls_rules,&new->hmap_node,new->hmap_node.hash);
-
-	struct sgx_cls_rule *rule;
-	HMAP_FOR_EACH_WITH_HASH(rule,hmap_node,hash,&SGX_hmap_table->cls_rules){
-
-	}
-
-	return new;
-}
-
-//5. node_delete: deletes sgx_rule from the hmap table and free the sgx_cls_rule
-void node_delete(struct cls_rule *out){
-	struct sgx_cls_rule *rule;
-	rule=node_search(out);
-	hmap_remove(&SGX_hmap_table->cls_rules,&rule->hmap_node);
-	free(rule);
-}
-//*******************************************************************************
-
-//Declaration of my global variables
-/* This structure will contain the flow tables in enclave memory */
 struct oftable * SGX_oftables;
 struct SGX_table_dpif * SGX_table_dpif;
 int SGX_n_tables;
-
-
-/*
- * printf:
- *   Invokes OCALL to display the enclave buffer to the terminal.
- */
-void printf(const char *fmt, ...)
-{
-    char buf[BUFSIZ] = {'\0'};
-    va_list ap;
-    va_start(ap, fmt);
-    vsnprintf(buf, BUFSIZ, fmt, ap);
-    va_end(ap);
-    ocall_myenclave_sample(buf);
-}
-
-int ecall_myenclave_sample()
-{
-  printf("IN MYENCLAVE\n");
-  return 0;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////
-
-/* Assigns TABLE to each oftable, in turn, in OFPROTO.
- *
- * All parameters are evaluated multiple times. */
-#define OFPROTO_FOR_EACH_TABLE(TABLE, SGX_TABLES)              \
-    for ((TABLE) = SGX_TABLES;                       \
-         (TABLE) < &SGX_TABLES[SGX_n_tables]; \
-         (TABLE)++)
-
 
 /* Open vSwitch Trusted function definitions */
 static void
@@ -128,9 +39,7 @@ ecall_ofproto_init_tables(int n_tables)
     OFPROTO_FOR_EACH_TABLE (table, SGX_oftables) {
         oftable_init(table);
     }
-
     //This is set in ofproto_dpif.c
-
     //Initialization of the hmap containing SGX_rules
     printf("Initialization of the hmap tables\n");
     sgx_table_cls_init();
@@ -140,9 +49,6 @@ ecall_ofproto_init_tables(int n_tables)
 void ecall_readonly_set(int table_id){
 	SGX_oftables[TBL_INTERNAL].flags=OFTABLE_HIDDEN | OFTABLE_READONLY;
 }
-
-
-
 
 int ecall_istable_readonly(uint8_t table_id){
 	return SGX_oftables[table_id].flags & OFTABLE_READONLY;
@@ -172,11 +78,7 @@ void ecall_cls_rule_init_i(struct cls_rule * cls_rule,
 }
 
 
-
-
-
 //5. Classifier_rule_overlaps
-
 int ecall_cr_rule_overlaps(int table_id,struct cls_rule * out){
 	//1. Look for the corresponding cls_rule in the enclave to do so we use
 	//the macro container_of
@@ -1120,207 +1022,49 @@ void ecall_ofproto_get_vlan_r(uint16_t *buf,int elem){
 	}
 }
 
-// HOT CALLS!
+// Optimized ecalls
 
-void call_func(int function, argument_list *args, return_value *ret) {
-  switch(function) {
-    case ECALL_ISTABLE_READONLY:
-			*((int *) ret->val) = ecall_istable_readonly(*((uint8_t *) args->arg1));
-      break;
-		case ECALL_CLS_RULE_INIT:
-		 	ecall_cls_rule_init((struct cls_rule *) args->arg1,
-				(const struct match *) args->arg2 , *((unsigned int *) args->arg3));
-			break;
-		case ECALL_CLS_RULE_DESTROY:
-			ecall_cls_rule_destroy((struct cls_rule *) args->arg1);
-			break;
-		case ECALL_CR_RULE_OVERLAPS:
-				*((int *) ret->val) = ecall_cr_rule_overlaps(*((int *) args->arg1), (struct cls_rule *) args->arg2);
-			break;
-		case ECALL_READONLY_SET:
-			ecall_readonly_set(*((uint8_t *) args->arg1));
-			break;
-		case ECALL_OFTABLE_SET_NAME:
-			ecall_oftable_set_name(*((int *) args->arg1), (char *) args->arg2);
-			break;
-		case ECALL_OFTABLE_DISABLE_EVICTION:
-			ecall_oftable_disable_eviction(*((int *) args->arg1));
-			break;
-		case ECALL_TABLE_MFLOWS_SET:
-			ecall_table_mflows_set(*((int *) args->arg1), *((unsigned int *) args->arg2));
-			break;
-		case ECALL_CLS_COUNT:
-			*((int *) ret->val) = ecall_cls_count(*((int *) args->arg1));
-			break;
-		case ECALL_TABLE_MFLOWS:
-			*((unsigned int *) ret->val) = ecall_table_mflows(*((int *) args->arg1));
-			break;
-		case ECALL_EVICTION_FIELDS_ENABLE:
-			*((int *) ret->val) = ecall_eviction_fields_enable(*((int *) args->arg1));
-			break;
-		case ECALL_FET_CCFES_C:
-			*((int *) ret->val) = ecall_fet_ccfes_c();
-			break;
-		case ECALL_FET_CCFES_R:
-			ecall_fet_ccfes_r((struct cls_rule **) args->arg1, *((int *) args->arg2));
-			break;
-		case ECALL_OFPROTO_DESTROY:
-			ecall_ofproto_destroy();
-			break;
-		case ECALL_TOTAL_RULES:
-			*((unsigned int *) ret->val) = ecall_total_rules();
-			break;
-		case ECALL_CLS_FIND_MATCH_EXACTLY:
-			ecall_cls_find_match_exactly(*((int *) args->arg1), (const struct match *) args->arg2, *((unsigned int *) args->arg3), (struct cls_rule **) args->arg4);
-			break;
-		case ECALL_CR_PRIORITY:
-			*((unsigned int *) ret->val) = ecall_cr_priority((struct cls_rule *) args->arg1);
-			break;
-		case ECALL_RULE_GET_FLAGS:
-			*((enum oftable_flags *) ret->val) = ecall_rule_get_flags(*((int *) args->arg1));
-			break;
-		case ECALL_TABLE_NAME:
-			ecall_table_name(*((int *) args->arg1), (char *) args->arg2, *((size_t *) args->arg1));
-			break;
-		case ECALL_FEMT_CCFE_C:
-			ecall_femt_ccfe_c(*((int *) args->arg1), *((uint8_t *) args->arg2), (const struct match *) args->arg3);
-			break;
-		case ECALL_FEMT_CCFE_R:
-			ecall_femt_ccfe_r(*((int *) args->arg1),
-												(struct cls_rule **) args->arg2,
-												*((int *) args->arg3),
-												*((uint8_t *) args->arg4),
-												(const struct match *) args->arg5);
-			break;
-		case ECALL_MINIMATCH_EXPAND:
-			ecall_minimatch_expand((struct cls_rule *) args->arg1, (struct match *) args->arg2);
-			break;
-		case ECALL_CLS_RULE_FORMAT:
-			*((unsigned int *) ret->val) = ecall_cls_rule_format((const struct cls_rule *) args->arg1, (struct match *) args->arg2);
-			break;
-		case ECALL_FET_CCFE_C:
-			*((int *) ret->val) = ecall_fet_ccfe_c();
-			break;
-		case ECALL_FET_CCFE_R:
-			ecall_fet_ccfe_r((struct cls_rule **) args->arg1, *((int *) args->arg2));
-			break;
-		case ECALL_CLS_RULE_HASH:
-			ecall_cls_rule_hash((const struct cls_rule *) args->arg1, *((uint32_t *) args->arg2));
-			break;
-		case ECALL_CLS_RULE_EQUAL:
-			*((int *) ret->val) = ecall_cls_rule_equal((const struct cls_rule *) args->arg1, (const struct cls_rule *) args->arg2);
-			break;
-		case ECALL_CHOOSE_RULE_TO_EVICT:
-		 	ecall_choose_rule_to_evict(*((int *) args->arg1), (struct cls_rule *) args->arg2);
-			break;
-		case ECALL_CHOOSE_RULE_TO_EVICT_P:
-		 ecall_choose_rule_to_evict_p(*((int *) args->arg1), (struct cls_rule *) args->arg2);
-		 break;
-		case ECALL_COLLECT_OFMONITOR_UTIL_C:
-			*((int *) ret->val) = ecall_collect_ofmonitor_util_c(*((int *) args->arg1), *((int *) args->arg2), (const struct minimatch *) args->arg3);
-			break;
-		case ECALL_COLLECT_OFMONITOR_UTIL_R:
-			ecall_collect_ofmonitor_util_r(*((int *) args->arg1), (struct cls_rule **) args->arg2, *((int *) args->arg3), *((int *) args->arg4), (const struct minimatch *) args->arg5);
-			break;
-		case ECALL_CLS_RULE_IS_LOOSE_MATCH:
-			*((int *) ret->val) = ecall_cls_rule_is_loose_match((struct cls_rule *) args->arg1, (const struct minimatch *) args->arg2);
-			break;
-		case ECALL_MINIMASK_GET_VID_MASK:
-			*((uint16_t *) ret->val) = ecall_minimask_get_vid_mask((struct cls_rule *) args->arg1);
-			break;
-		case ECALL_MINIFLOW_GET_VID:
-			*((uint16_t *) ret->val) = ecall_miniflow_get_vid((struct cls_rule *) args->arg1);
-			break;
-		case ECALL_EVG_GROUP_RESIZE:
-			ecall_evg_group_resize(*((int *) args->arg1), (struct cls_rule *) args->arg2, *((size_t *) args->arg3));
-			break;
-		case ECALL_EVG_ADD_RULE:
-			*((size_t *) ret->val) = ecall_evg_add_rule(*((int *) args->arg1),
-																									(struct cls_rule *) args->arg2,
-																									*((uint32_t *) args->arg3),
-																									*((uint32_t *) args->arg4),
-																									*((struct heap_node *) args->arg5));
 
-			break;
-		case ECALL_OFTABLE_ENABLE_EVICTION:
-			ecall_oftable_enable_eviction(*((int *) args->arg1),
-																		(const struct mf_subfield *) args->arg2,
-																		*((size_t *) args->arg3),
-																		*((uint32_t *) args->arg4));
-			break;
-		case ECALL_CCFE_C:
-			*((int *) ret->val) = ecall_ccfe_c(*((int *) args->arg1));
-			break;
-		case ECALL_CCFE_R:
-			ecall_ccfe_r((struct cls_rule **) args->arg1,
-									*((int *) args->arg2),
-									*((int *) args->arg3));
-			break;
-		case ECALL_CLS_REMOVE:
-			ecall_cls_remove(*((int *) args->arg1), (struct cls_rule *) args->arg2);
-			break;
-		case ECALL_CLASSIFIER_REPLACE:
-			ecall_classifier_replace(*((int *) args->arg1),
-															(struct cls_rule *) args->arg2,
-															(struct cls_rule **) args->arg3);
-			break;
-		case ECALL_OFPROTO_GET_VLAN_C:
-			*((int *) ret->val) = ecall_ofproto_get_vlan_c();
-			break;
-		case ECALL_OFPROTO_GET_VLAN_R:
-			ecall_ofproto_get_vlan_r((uint16_t *) args->arg1,
-															*((int *) args->arg2));
-			break;
-		case ECALL_FEMT_C:
-			*((int *) ret->val) =  ecall_femt_ccfe_c(*((int *) args->arg1),
-																							 *((uint8_t *) args->arg2),
-																							 (const struct match *) args->arg3);
-			break;
-		case ECALL_FEMT_R:
-			ecall_femt_r(*((int *) args->arg1),
-									(struct cls_rule **) args->arg2,
-									*((int *) args->arg3),
-									*((uint8_t *) args->arg4),
-									(const struct match *) args->arg5,
-									*((unsigned int *) args->arg6));
-			break;
-		case ECALL_HIDDEN_TABLES_CHECK:
-			ecall_hidden_tables_check();
-			break;
-		case ECALL_MINIFLOW_EXPAND:
-		 	ecall_miniflow_expand((struct cls_rule *) args->arg1, (struct flow *) args->arg2);
-			break;
-		case ECALL_RULE_CALCULATE_TAG:
-			*((uint32_t *) ret->val) = ecall_rule_calculate_tag((struct cls_rule *) args->arg1, (const struct flow *) args->arg2, *((int *) args->arg3));
-			break;
-		case ECALL_TABLE_UPDATE_TAGGABLE:
-			*((int *) ret->val) = ecall_table_update_taggable(*((uint8_t *) args->arg1));
-			break;
-		case ECALL_IS_SGX_OTHER_TABLE:
-		 	*((int *) ret->val) = ecall_is_sgx_other_table(*((int *) args->arg1));
-			break;
-		case ECALL_CLS_LOOKUP:
-		 	ecall_cls_lookup((struct cls_rule **) args->arg1, *((int *) args->arg2), (const struct flow *) args->arg3, (struct flow_wildcards *) args->arg4);
-			break;
-		case ECALL_SGX_TABLE_DPIF:
-			ecall_SGX_table_dpif(*((int *) args->arg1));
-			break;
-		case ECALL_EVG_REMOVE_RULE:
-		 	*((int *) ret->val) =ecall_evg_remove_rule(*((int *) args->arg1),
-																								(struct cls_rule *) args->arg2);
-			break;
-    default:
-      printf("Error, no matching switch case for %d.\n", function);
-  }
+void ecall_destroy_rule_if_overlaps(int table_id,struct cls_rule * o_cls_rule) {
+	if(ecall_cr_rule_overlaps(table_id, o_cls_rule)) {
+		ecall_cls_rule_destroy(o_cls_rule);
+	}
+}
+
+bool ecall_get_rule_to_evict_if_neccesary(int table_id, struct cls_rule* res) {
+	if (ecall_cls_count(table_id)> ecall_table_mflows(table_id)){
+		ecall_choose_rule_to_evict_p(table_id, res);
+		return true;
+	}
+	return false;
+}
+
+uint32_t ecall_miniflow_expand_and_tag(struct cls_rule *o_cls_rule, struct flow *flow, int table_id) {
+	ecall_miniflow_expand(o_cls_rule, flow);
+	uint32_t hash;
+	hash = ecall_rule_calculate_tag(o_cls_rule, flow, table_id);
+	return hash;
 }
 
 
+bool ecall_allocate_cls_rule_if_not_read_only(int table_id, struct cls_rule *o_cls_rule, struct match *match, unsigned int priority) {
+	if (ecall_istable_readonly(table_id)){
+		return true;
+	}
+	ecall_cls_rule_init(o_cls_rule, match, priority);
+	return false;
+}
 
+
+void ecall_classifer_replace_if_modifiable(int table_id, struct cls_rule* o_cls_rule, struct cls_rule ** cls_rule_rtrn, bool *rule_is_modifiable) {
+   ecall_classifier_replace(table_id, o_cls_rule, cls_rule_rtrn);
+   *rule_is_modifiable = !(ecall_rule_get_flags(table_id) & OFTABLE_READONLY);
+}
+
+// HOT CALLS!
 int ecall_start_poller(async_ecall *ctx) {
-
-
 	//sgx_thread_mutex_init(&ctx->mutex, NULL);
-
+	char buf[128];
   while(1) {
 		sgx_spin_lock(&ctx->spinlock);
 
@@ -1328,12 +1072,12 @@ int ecall_start_poller(async_ecall *ctx) {
 			#ifdef TIMEOUT
 			timeout_counter = INIT_TIMER_VALUE;
 			#endif
-			//printf("Running function %d\n", ctx->function);
+			ENCLAVE_LOG(buf, "Running function %d\n", ctx->function);
       ctx->run = false;
-      call_func(ctx->function, ctx->args, ctx->ret);
+      execute_function(ctx->function, ctx->args, ctx->ret);
       ctx->is_done = true;
 			sgx_spin_unlock(&ctx->spinlock);
-			//printf("Running function %d done.\n", ctx->function);
+			ENCLAVE_LOG(buf, "Running function %d done.\n", ctx->function);
       continue;
     }
 

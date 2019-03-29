@@ -1,15 +1,17 @@
 #!/bin/bash
+echo "Bulding enclave with flags = $2"
+echo "Bulding ovs with flags = $1"
 source /opt/intel/sgxsdk/environment
 echo "%%%%%%%%%%%%%%%%%%%%%%%%% BUILDING OFTonSGX"
 make clean
-make SGX_MODE=HW SGX_PRERELEASE=1 SGX_DEBUG=0 LFLAGS="-D HOTCALL -D TIMEOUT"
-#make LFLAGS="-D HOTCALL"
-cp myenclave.signed.so ovs
+make SGX_MODE=HW SGX_PRERELEASE=1 SGX_DEBUG=0 LFLAGS="$2"
+
+cp enclave.signed.so ovs
 
 echo "%%%%%%%%%%%%%%%%%%%%%%%%% BUILDING OvS"
 cd ovs
 #./boot.sh
-./configure CFLAGS="-D SGX -I/home/jakob/OVS_SGX/untrusted" \
+./configure CFLAGS="$1 -I/home/jakob/OVS_SGX/untrusted" \
             LDFLAGS="-L/home/jakob/OVS_SGX/ovs/lib/ \
                      -L/home/jakob/OVS_SGX" \
             LIBS="-lOFTonSGX -lpthread -lstdc++"
