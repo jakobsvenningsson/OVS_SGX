@@ -262,7 +262,7 @@ void SGX_classifier_replace(int table_id,struct cls_rule* o_cls_rule,struct cls_
     };
     make_hotcall(&ctx, ECALL_CLASSIFIER_REPLACE, &args, NULL);
   #else
-    ecall_classifier_replace(global_eid,table_id,o_cls_rule,cls_rule_rtrn);
+    ecall_classifier_replace(global_eid, table_id, o_cls_rule, cls_rule_rtrn);
   #endif
 }
 
@@ -1009,7 +1009,7 @@ void SGX_table_dpif_init(int n_tables){
     };
     make_hotcall(&ctx, ECALL_SGX_TABLE_DPIF, &args, NULL);
   #else
-    ecall_SGX_table_dpif(global_eid,n_tables);
+    ecall_SGX_table_dpif(global_eid ,n_tables);
   #endif
 }
 
@@ -1272,6 +1272,7 @@ void SGX_classifer_replace_if_modifiable(int table_id, struct cls_rule* o_cls_ru
   };
   make_hotcall(&ctx, ECALL_CLASSIFIER_REPLACE_IF_MODIFIABLE, &args, NULL);
   #else
+  puts("BBBBBB");
   ecall_classifer_replace_if_modifiable(global_eid, table_id, o_cls_rule, cls_rule_rtrn, rule_is_modifiable);
   #endif
 }

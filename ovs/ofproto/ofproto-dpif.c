@@ -1458,8 +1458,10 @@ construct(struct ofproto *ofproto_)
 
     VLOG_ERR("INIT TABLES +++++++++++++++++++++++++ \n");
     ofproto_init_tables(ofproto_, N_TABLES);
+    VLOG_ERR("GBE INIT TABLES +++++++++++++++++++++++++ \n");
 
     error = add_internal_flows(ofproto);
+    VLOG_ERR("AFTER INIT TABLES +++++++++++++++++++++++++ \n");
 
 
 
@@ -1492,6 +1494,7 @@ static int
 add_internal_flow(struct ofproto_dpif *ofproto, int id,
                   const struct ofpbuf *ofpacts, struct rule_dpif **rulep)
 {
+
     struct ofputil_flow_mod fm;
     int error;
 
@@ -1510,6 +1513,7 @@ add_internal_flow(struct ofproto_dpif *ofproto, int id,
     fm.flags = 0;
     fm.ofpacts = ofpacts->data;
     fm.ofpacts_len = ofpacts->size;
+    puts("FLOW MOD");
     error = ofproto_flow_mod(&ofproto->up, &fm);
     if (error) {
         VLOG_ERR_RL(&rl, "failed to add internal flow %d (%s)",

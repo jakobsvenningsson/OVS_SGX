@@ -1605,7 +1605,7 @@ SGX_EXTERNC const struct {
 		{(void*)(uintptr_t)sgx_ecall_get_rule_to_evict_if_neccesary, 0},
 		{(void*)(uintptr_t)sgx_ecall_miniflow_expand_and_tag, 0},
 		{(void*)(uintptr_t)sgx_ecall_allocate_cls_rule_if_not_read_only, 0},
-		{(void*)(uintptr_t)sgx_ecall_classifer_replace_if_modifiable, 1},
+		{(void*)(uintptr_t)sgx_ecall_classifer_replace_if_modifiable, 0},
 		{(void*)(uintptr_t)sgx_ecall_ofproto_init_tables, 0},
 		{(void*)(uintptr_t)sgx_ecall_readonly_set, 0},
 		{(void*)(uintptr_t)sgx_ecall_istable_readonly, 0},

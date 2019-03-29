@@ -521,7 +521,6 @@ ofproto_init_tables(struct ofproto *ofproto, int n_tables)
     //#endif
 
   #ifdef SGX
-    puts("NO DEBUG!!!!");
     sgx_ofproto_init_tables(n_tables);
     //Initialization of special table_dpif
     SGX_table_dpif_init(n_tables);
@@ -3489,7 +3488,6 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
       ofproto->ofproto_class->rule_dealloc(rule);
       return OFPERR_OFPBRC_EPERM;
     }
-
 #endif
     /* Serialize against pending deletion. */
     if (is_flow_deletion_pending(ofproto, &rule->cr, table_id)) {
@@ -3503,8 +3501,6 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
     }
 
     /* Check for overlap, if requested. */
-
-
 #ifndef SGX
     if (fm->flags & OFPFF_CHECK_OVERLAP
         && classifier_rule_overlaps(&table->cls, &rule->cr)) {
@@ -3543,10 +3539,17 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
 
     /* Insert new rule. */
     // FIXME: MERGE rule_is_modifiable omtp  oftable_replace_rule
-    bool rule_is_mod;
-    victim = oftable_replace_rule(rule, &rule_is_mod);
-    //!rule_is_modifiable(victim)
-    if (victim && !rule_is_mod) {
+    #ifndef SGX
+      bool dummy;
+      victim = oftable_replace_rule(rule, &dummy);
+      if (victim && !rule_is_modifiable(victim)) {
+    #else
+      // FIXME SOME BUG WITH THE ENCLAVE CODE
+      bool rule_is_mod;
+      victim = oftable_replace_rule(rule, &rule_is_mod);
+      //!rule_is_modifiable(victim)
+      if (victim && !rule_is_modifiable(victim)) {
+    #endif
         error = OFPERR_OFPBRC_EPERM;
     } else if (victim && victim->pending) {
         error = OFPROTO_POSTPONE;
@@ -3603,6 +3606,9 @@ exit:
 
     clock_gettime(CLOCK_REALTIME,&et1);
     VLOG_INFO("ADD_FLOW: execution time:  %lu %lu",(et1.tv_sec - st1.tv_sec),(et1.tv_nsec - st1.tv_nsec));
+    if(error) {
+      VLOG_INFO("ADD_FLOW EXITED WITH ERROR");
+    }
 
     /*int fw=fopen("./add_flow", "w");
     char buf[32];
@@ -3961,11 +3967,18 @@ handle_flow_mod__(struct ofproto *ofproto, struct ofconn *ofconn,
     struct timespec st;
     enum ofperr res;
     char buf[32];
-
     switch (fm->command) {
     case OFPFC_ADD:
       ;
-    	int fw1=fopen("./data/add_flow", "a");
+      #if defined(SGX) && defined(HOTCALL) && defined(TIMEOUT)
+        int fw1=fopen("./data/add_flow_sgx_hotcalls_timeout", "a");
+      #elif defined(SGX) && defined(HOTCALL)
+        int fw1=fopen("./data/add_flow_sgx_hotcalls", "a");
+      #elif defined(SGX)
+        int fw1=fopen("./data/add_flow_sgx", "a");
+      #else
+        int fw1=fopen("./data/add_flow", "a");
+      #endif
     	clock_gettime(CLOCK_REALTIME,&st);
     	res = add_flow(ofproto, ofconn, fm, oh);
     	clock_gettime(CLOCK_REALTIME,&et);
@@ -4734,10 +4747,12 @@ ofopgroup_complete(struct ofopgroup *group)
               - The affected rule is not visible to controllers.
 
               - The operation's only effect was to update rule->modified. */
+        // FIXME: SGX MIGHT STILL WORK
         if (!(op->error
               || (op->type == OFOPERATION_MODIFY
                   && !op->ofpacts
-                  && rule->flow_cookie == op->flow_cookie)) || ofproto_rule_is_hidden(rule)) {
+                  && rule->flow_cookie == op->flow_cookie)
+              || ofproto_rule_is_hidden(rule))) {
             /* Check that we can just cast from ofoperation_type to
              * nx_flow_update_event. */
             BUILD_ASSERT_DECL((enum nx_flow_update_event) OFOPERATION_ADD
@@ -5441,17 +5456,20 @@ oftable_replace_rule(struct rule *rule, bool *rule_is_modifiable)
 
     struct cls_rule * sgx_cls_rule; //An auxiliary cls_rule....
 
-    //SGX_classifier_replace(rule->table_id,&rule->cr,&sgx_cls_rule);
-    SGX_classifer_replace_if_modifiable(rule->table_id,&rule->cr,&sgx_cls_rule, rule_is_modifiable);
+    SGX_classifier_replace(rule->table_id,&rule->cr,&sgx_cls_rule);
+    //rule_is_modifiable = true;
+    //SGX_classifer_replace_if_modifiable(rule->table_id, &rule->cr, &sgx_cls_rule, rule_is_modifiable);
     //*rule_is_modifiable = rule_is_modifiable(victim);
 
     victim = rule_from_cls_rule(sgx_cls_rule);
+
 
 #endif
 
 
     if (victim) {
     	if (!list_is_empty(&victim->expirable)) {
+            // FIXME CAUSES CRASH ??
             list_remove(&victim->expirable);
         }
         eviction_group_remove_rule(victim);

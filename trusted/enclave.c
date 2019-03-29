@@ -1057,8 +1057,12 @@ bool ecall_allocate_cls_rule_if_not_read_only(int table_id, struct cls_rule *o_c
 
 
 void ecall_classifer_replace_if_modifiable(int table_id, struct cls_rule* o_cls_rule, struct cls_rule ** cls_rule_rtrn, bool *rule_is_modifiable) {
-   ecall_classifier_replace(table_id, o_cls_rule, cls_rule_rtrn);
-   *rule_is_modifiable = !(ecall_rule_get_flags(table_id) & OFTABLE_READONLY);
+   struct cls_rule * sgx_cls_rule;
+   ecall_classifier_replace(table_id, o_cls_rule, &sgx_cls_rule);
+   if(sgx_cls_rule) {
+     *cls_rule_rtrn = sgx_cls_rule;
+     *rule_is_modifiable = !(ecall_rule_get_flags(table_id) & OFTABLE_READONLY);
+   }
 }
 
 // HOT CALLS!
