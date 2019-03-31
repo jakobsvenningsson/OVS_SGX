@@ -93,31 +93,35 @@ int sgx_ofproto_init_tables(int n_tables)
 	    //Set the variable enclave_status to zero to avoid reinitialization of the enclave
 	    enclave_status=0;
 	    //initialize the tables
-	    ecall_ofproto_init_tables(global_eid,n_tables);
+
+      #ifdef HOTCALL
+        puts("HOTCALLS ENABLED STARTING THREAD.");
+        pthread_t thread_id;
+
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+
+        pthread_create(&thread_id, NULL, ecall_polling_thread, NULL);
+      #else
+       puts("NO HOTCALLS.");
+      #endif
+
+      #ifdef TIMEOUT
+       puts("TIMEOUT ENABLED");
+      #endif
 	}
 	else {
 		printf("No need to initialize the container,.....\n");
 	}
 
+  ecall_ofproto_init_tables(global_eid,n_tables);
+
+
   //We perform another test:
    //ecall_myenclave_sample(global_eid, &ecall_return);
 
-   #ifdef HOTCALL
-     puts("HOTCALLS ENABLED STARTING THREAD.");
-     pthread_t thread_id;
 
-     pthread_attr_t attr;
-     pthread_attr_init(&attr);
-     pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
-
-     pthread_create(&thread_id, NULL, ecall_polling_thread, NULL);
-   #else
-    puts("NO HOTCALLS.");
-   #endif
-
-   #ifdef TIMEOUT
-    puts("TIMEOUT ENABLED");
-   #endif
 
   return 0;
 }
@@ -1111,7 +1115,7 @@ void SGX_oftable_set_name(int table_id, char *name){
       };
       make_hotcall(&ctx, ECALL_OFTABLE_SET_NAME, &args, NULL);
   #else
-    ecall_oftable_set_name(global_eid,table_id, name);
+    ecall_oftable_set_name(global_eid, table_id, name);
   #endif
 }
 

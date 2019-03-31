@@ -1456,22 +1456,20 @@ construct(struct ofproto *ofproto_)
                 hash_string(ofproto->up.name, 0));
     memset(&ofproto->stats, 0, sizeof ofproto->stats);
 
-    puts("BEEF");
+    VLOG_ERR("INIT TABLES +++++++++++++++++++++++++ \n");
     ofproto_init_tables(ofproto_, N_TABLES);
-    puts("after");
 
     error = add_internal_flows(ofproto);
-    puts("later");
 
 
 
 #ifndef SGX
+
     //This is set inside the enclave.
     ofproto->up.tables[TBL_INTERNAL].flags = OFTABLE_HIDDEN | OFTABLE_READONLY;
 #else
     SGX_readonly_set(TBL_INTERNAL);
 #endif
-
     ofproto->n_hit = 0;
     ofproto->n_missed = 0;
 
@@ -1487,8 +1485,6 @@ construct(struct ofproto *ofproto_)
     ofproto->total_subfacet_life_span = 0;
     ofproto->total_subfacet_count = 0;
     ofproto->n_update_stats = 0;
-    puts("last");
-
     return error;
 }
 

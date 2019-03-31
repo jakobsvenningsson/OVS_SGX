@@ -138,13 +138,18 @@ ecall_ofproto_init_tables(int n_tables)
 }
 
 void ecall_readonly_set(int table_id){
-	SGX_oftables[TBL_INTERNAL].flags=OFTABLE_HIDDEN | OFTABLE_READONLY;
+	printf("Setting table %d %d\n", table_id, TBL_INTERNAL);
+	printf("val: %d\n", OFTABLE_HIDDEN | OFTABLE_READONLY);
+
+	SGX_oftables[table_id].flags= OFTABLE_HIDDEN | OFTABLE_READONLY;
 }
 
 
 
 
 int ecall_istable_readonly(uint8_t table_id){
+	printf("Reading table %d\n", table_id, TBL_INTERNAL);
+	printf("val: %d\n", SGX_oftables[table_id].flags & OFTABLE_READONLY);
 	return SGX_oftables[table_id].flags & OFTABLE_READONLY;
 }
 
@@ -812,8 +817,10 @@ void ecall_oftable_destroy(int table_id){
 void ecall_ofproto_destroy(){
 	int i;
 	for(i=0;i<SGX_n_tables;i++){
+		printf("inside");
 		ecall_oftable_destroy(i);
 	}
+	printf("outside");
 	free(SGX_oftables);
 }
 
@@ -1309,6 +1316,16 @@ void call_func(int function, argument_list *args, return_value *ret) {
 		 	*((int *) ret->val) =ecall_evg_remove_rule(*((int *) args->arg1),
 																								(struct cls_rule *) args->arg2);
 			break;
+		case ECALL_CLS_RULE_PRIORITY:
+      *((unsigned int *) ret->val) =  ecall_cls_rule_priority((struct cls_rule *) args->arg1);
+			break;
+		case ECALL_DESFET_CCFES_C:
+			*((int *) ret->val) =  ecall_desfet_ccfes_c();
+			break;
+		case ECALL_DESFET_CCFES_R:
+			ecall_desfet_ccfes_r((struct cls_rule **) args->arg1,
+									*((int *) args->arg2));
+									break;
     default:
       printf("Error, no matching switch case for %d.\n", function);
   }
@@ -1328,12 +1345,12 @@ int ecall_start_poller(async_ecall *ctx) {
 			#ifdef TIMEOUT
 			timeout_counter = INIT_TIMER_VALUE;
 			#endif
-			//printf("Running function %d\n", ctx->function);
+			printf("Running function %d\n", ctx->function);
       ctx->run = false;
       call_func(ctx->function, ctx->args, ctx->ret);
       ctx->is_done = true;
 			sgx_spin_unlock(&ctx->spinlock);
-			//printf("Running function %d done.\n", ctx->function);
+			printf("Running function %d done.\n", ctx->function);
       continue;
     }
 

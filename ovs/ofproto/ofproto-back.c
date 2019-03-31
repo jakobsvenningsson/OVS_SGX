@@ -514,15 +514,19 @@ ofproto_init_tables(struct ofproto *ofproto, int n_tables)
     OFPROTO_FOR_EACH_TABLE (table, ofproto) {
         oftable_init(table);
     }
-//#ifdef DEBUG
-//    sgx_ofproto_init_tables(n_tables);
-//#endif
+#endif
+    //#ifdef SGX && DEBUG
+    //  puts("DEBUG!!!!");
+    //  sgx_ofproto_init_tables(n_tables);
+    //#endif
 
-#else
+  #ifdef SGX
+    puts("NO DEBUG!!!!");
     sgx_ofproto_init_tables(n_tables);
     //Initialization of special table_dpif
     SGX_table_dpif_init(n_tables);
-#endif
+  #endif
+
 
 }
 
@@ -3417,7 +3421,7 @@ static enum ofperr
 add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
          const struct ofputil_flow_mod *fm, const struct ofp_header *request)
 {
-  puts("BEG ADD FLOW");
+
 	struct timespec st;
 	struct timespec et;
 	struct timespec st1;
@@ -3459,13 +3463,10 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
     table = &ofproto->tables[table_id];
 
     if (table->flags & OFTABLE_READONLY) {
-      puts("READ ADD FLOW1");
-
         return OFPERR_OFPBRC_EPERM;
     }
 #else
     if (SGX_istable_readonly(table_id)){
-      puts("READ ADD FLOW2");
 
     	return OFPERR_OFPBRC_EPERM;
     }
@@ -3480,19 +3481,13 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
 #ifndef SGX
     cls_rule_init(&rule->cr, &fm->match, fm->priority);
 #else
-    clock_gettime(CLOCK_REALTIME,&st);
-
     SGX_cls_rule_init(&rule->cr,&fm->match, fm->priority);
-    clock_gettime(CLOCK_REALTIME,&et);
-    VLOG_INFO("J02: The time is: %lu %lu",(et.tv_sec - st.tv_sec),(et.tv_nsec - st.tv_nsec));
-
 #endif
     /* Serialize against pending deletion. */
     if (is_flow_deletion_pending(ofproto, &rule->cr, table_id)) {
 #ifndef  SGX
     	cls_rule_destroy(&rule->cr);
 #else
-
     	SGX_cls_rule_destroy(&rule->cr);
 #endif
         ofproto->ofproto_class->rule_dealloc(rule);
@@ -3507,7 +3502,6 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
         && classifier_rule_overlaps(&table->cls, &rule->cr)) {
     	cls_rule_destroy(&rule->cr);
 #else
-
     if (fm->flags & OFPFF_CHECK_OVERLAP
             && SGX_cr_rule_overlaps(table_id,&rule->cr)) {
     	SGX_cls_rule_destroy(&rule->cr);
@@ -3542,11 +3536,7 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
     rule->modify_seqno = 0;
 
     /* Insert new rule. */
-    clock_gettime(CLOCK_REALTIME,&st);
     victim = oftable_replace_rule(rule);
-    clock_gettime(CLOCK_REALTIME,&et);
-    VLOG_INFO("J03: The time is:  %lu %lu",(et.tv_sec - st.tv_sec),(et.tv_nsec - st.tv_nsec));
-
     if (victim && !rule_is_modifiable(victim)) {
         error = OFPERR_OFPBRC_EPERM;
     } else if (victim && victim->pending) {
@@ -3555,16 +3545,13 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
         struct ofoperation *op;
         struct rule *evict;
 #ifndef SGX
-
         if (classifier_count(&table->cls) > table->max_flows) {
             bool was_evictable;
-
             was_evictable = rule->evictable;
             rule->evictable = false;
             evict = choose_rule_to_evict(table);
             rule->evictable = was_evictable;
 #else
-
             if (SGX_cls_count(table_id)> SGX_table_mflows(table_id)){
             	struct cls_rule *cls_rule_temp;
             	SGX_choose_rule_to_evict_p(table_id,cls_rule_temp);
@@ -3585,11 +3572,7 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
         op = ofoperation_create(group, rule, OFOPERATION_ADD, 0);
         op->victim = victim;
 
-        clock_gettime(CLOCK_REALTIME,&st);
         error = ofproto->ofproto_class->rule_construct(rule);
-        clock_gettime(CLOCK_REALTIME,&et);
-        VLOG_INFO("J04: The time is:  %lu %lu",(et.tv_sec - st.tv_sec),(et.tv_nsec - st.tv_nsec));
-
         if (error) {
             op->group->n_running--;
             ofoperation_destroy(rule->pending);
@@ -3602,19 +3585,22 @@ add_flow(struct ofproto *ofproto, struct ofconn *ofconn,
 
     }
 
-    puts("END ADD FLOW");
-
-
 exit:
     /* Back out if an error occurred. */
     if (error) {
-      puts("ERR ADD FLOW");
         oftable_substitute_rule(rule, victim);
         ofproto_rule_destroy__(rule);
     }
 
     clock_gettime(CLOCK_REALTIME,&et1);
-    VLOG_INFO("ADD_FLOW: The time is:  %lu %lu",(et1.tv_sec - st1.tv_sec),(et1.tv_nsec - st1.tv_nsec));
+    VLOG_INFO("ADD_FLOW: execution time:  %lu %lu",(et1.tv_sec - st1.tv_sec),(et1.tv_nsec - st1.tv_nsec));
+
+    /*int fw=fopen("./add_flow", "w");
+    char buf[32];
+    sprintf(buf, "%lu\n", et1.tv_nsec - st1.tv_nsec);
+    int res = fputs(buf, fw);
+    fclose(fw);*/
+
     return error;
 
 }
@@ -3962,21 +3948,62 @@ handle_flow_mod__(struct ofproto *ofproto, struct ofconn *ofconn,
         return OFPROTO_POSTPONE;
     }
 
+    struct timespec et;
+    struct timespec st;
+    enum ofperr res;
+    char buf[32];
+
     switch (fm->command) {
     case OFPFC_ADD:
-        return add_flow(ofproto, ofconn, fm, oh);
+      ;
+    	int fw1=fopen("./data/add_flow", "a");
+    	clock_gettime(CLOCK_REALTIME,&st);
+    	res = add_flow(ofproto, ofconn, fm, oh);
+    	clock_gettime(CLOCK_REALTIME,&et);
+    	sprintf(buf, "%lu\n", et.tv_nsec - st.tv_nsec);
+    	fputs(buf, fw1);
+    	fclose(fw1);
+      return res;
     case OFPFC_MODIFY:
-        return modify_flows_loose(ofproto, ofconn, fm, oh);
-
+      ;
+    	int fw2=fopen("./data/modify_flow_loose", "a");
+    	clock_gettime(CLOCK_REALTIME,&st);
+    	res = modify_flows_loose(ofproto, ofconn, fm, oh);
+    	clock_gettime(CLOCK_REALTIME,&et);
+    	sprintf(buf, "%lu\n", et.tv_nsec - st.tv_nsec);
+    	fputs(buf, fw2);
+	    fclose(fw2);
+      return res;
     case OFPFC_MODIFY_STRICT:
-        return modify_flow_strict(ofproto, ofconn, fm, oh);
-
+      ;
+      int fw3=fopen("./data/modify_flow_strict", "a");
+    	clock_gettime(CLOCK_REALTIME,&st);
+    	res = modify_flow_strict(ofproto, ofconn, fm, oh);
+    	clock_gettime(CLOCK_REALTIME,&et);
+    	sprintf(buf, "%lu\n", et.tv_nsec - st.tv_nsec);
+    	fputs(buf, fw3);
+	    fclose(fw3);
+      return res;
     case OFPFC_DELETE:
-        return delete_flows_loose(ofproto, ofconn, fm, oh);
-
+      ;
+      int fw4=fopen("./data/delete_flow_loose", "a");
+      clock_gettime(CLOCK_REALTIME,&st);
+      res = delete_flows_loose(ofproto, ofconn, fm, oh);
+      clock_gettime(CLOCK_REALTIME,&et);
+      sprintf(buf, "%lu\n", et.tv_nsec - st.tv_nsec);
+      fputs(buf, fw4);
+      fclose(fw4);
+      return res;
     case OFPFC_DELETE_STRICT:
-        return delete_flow_strict(ofproto, ofconn, fm, oh);
-
+      ;
+      int fw5=fopen("./data/delete_flow_strict", "a");
+      clock_gettime(CLOCK_REALTIME,&st);
+      res = delete_flow_strict(ofproto, ofconn, fm, oh);
+      clock_gettime(CLOCK_REALTIME,&et);
+      sprintf(buf, "%lu\n", et.tv_nsec - st.tv_nsec);
+      fputs(buf, fw5);
+      fclose(fw5);
+      return res;
     default:
         if (fm->command > 0xff) {
             VLOG_WARN_RL(&rl, "%s: flow_mod has explicit table_id but "
