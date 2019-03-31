@@ -61,6 +61,19 @@ typedef struct ms_ecall_classifer_replace_if_modifiable_t {
 	bool* ms_rule_is_modifiable;
 } ms_ecall_classifer_replace_if_modifiable_t;
 
+typedef struct ms_ecall_ofproto_configure_table_t {
+	bool ms_retval;
+	int ms_table_id;
+	struct mf_subfield* ms_groups;
+	char* ms_name;
+	unsigned int ms_max_flows;
+	unsigned int ms_n_fields;
+	unsigned int ms_buf_size;
+	unsigned int* ms_real_size;
+	struct cls_rule* ms_buf;
+	bool* ms_is_readonly;
+} ms_ecall_ofproto_configure_table_t;
+
 typedef struct ms_ecall_ofproto_init_tables_t {
 	int ms_n_tables;
 } ms_ecall_ofproto_init_tables_t;
@@ -490,6 +503,29 @@ static sgx_status_t SGX_CDECL sgx_ecall_classifer_replace_if_modifiable(void* pm
 
 
 	ecall_classifer_replace_if_modifiable(ms->ms_table_id, _tmp_o_cls_rule, _tmp_cls_rule_rtrn, _tmp_rule_is_modifiable);
+
+
+	return status;
+}
+
+static sgx_status_t SGX_CDECL sgx_ecall_ofproto_configure_table(void* pms)
+{
+	CHECK_REF_POINTER(pms, sizeof(ms_ecall_ofproto_configure_table_t));
+	//
+	// fence after pointer checks
+	//
+	sgx_lfence();
+	ms_ecall_ofproto_configure_table_t* ms = SGX_CAST(ms_ecall_ofproto_configure_table_t*, pms);
+	sgx_status_t status = SGX_SUCCESS;
+	struct mf_subfield* _tmp_groups = ms->ms_groups;
+	char* _tmp_name = ms->ms_name;
+	unsigned int* _tmp_real_size = ms->ms_real_size;
+	struct cls_rule* _tmp_buf = ms->ms_buf;
+	bool* _tmp_is_readonly = ms->ms_is_readonly;
+
+
+
+	ms->ms_retval = ecall_ofproto_configure_table(ms->ms_table_id, _tmp_groups, _tmp_name, ms->ms_max_flows, ms->ms_n_fields, ms->ms_buf_size, _tmp_real_size, _tmp_buf, _tmp_is_readonly);
 
 
 	return status;
@@ -1596,9 +1632,9 @@ static sgx_status_t SGX_CDECL sgx_ecall_ofproto_get_vlan_r(void* pms)
 
 SGX_EXTERNC const struct {
 	size_t nr_ecall;
-	struct {void* ecall_addr; uint8_t is_priv;} ecall_table[64];
+	struct {void* ecall_addr; uint8_t is_priv;} ecall_table[65];
 } g_ecall_table = {
-	64,
+	65,
 	{
 		{(void*)(uintptr_t)sgx_ecall_start_poller, 0},
 		{(void*)(uintptr_t)sgx_ecall_destroy_rule_if_overlaps, 0},
@@ -1606,6 +1642,7 @@ SGX_EXTERNC const struct {
 		{(void*)(uintptr_t)sgx_ecall_miniflow_expand_and_tag, 0},
 		{(void*)(uintptr_t)sgx_ecall_allocate_cls_rule_if_not_read_only, 0},
 		{(void*)(uintptr_t)sgx_ecall_classifer_replace_if_modifiable, 0},
+		{(void*)(uintptr_t)sgx_ecall_ofproto_configure_table, 0},
 		{(void*)(uintptr_t)sgx_ecall_ofproto_init_tables, 0},
 		{(void*)(uintptr_t)sgx_ecall_readonly_set, 0},
 		{(void*)(uintptr_t)sgx_ecall_istable_readonly, 0},
@@ -1669,12 +1706,12 @@ SGX_EXTERNC const struct {
 
 SGX_EXTERNC const struct {
 	size_t nr_ocall;
-	uint8_t entry_table[2][64];
+	uint8_t entry_table[2][65];
 } g_dyn_entry_table = {
 	2,
 	{
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
 	}
 };
 

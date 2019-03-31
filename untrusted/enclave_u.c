@@ -39,6 +39,19 @@ typedef struct ms_ecall_classifer_replace_if_modifiable_t {
 	bool* ms_rule_is_modifiable;
 } ms_ecall_classifer_replace_if_modifiable_t;
 
+typedef struct ms_ecall_ofproto_configure_table_t {
+	bool ms_retval;
+	int ms_table_id;
+	struct mf_subfield* ms_groups;
+	char* ms_name;
+	unsigned int ms_max_flows;
+	unsigned int ms_n_fields;
+	unsigned int ms_buf_size;
+	unsigned int* ms_real_size;
+	struct cls_rule* ms_buf;
+	bool* ms_is_readonly;
+} ms_ecall_ofproto_configure_table_t;
+
 typedef struct ms_ecall_ofproto_init_tables_t {
 	int ms_n_tables;
 } ms_ecall_ofproto_init_tables_t;
@@ -448,12 +461,30 @@ sgx_status_t ecall_classifer_replace_if_modifiable(sgx_enclave_id_t eid, int tab
 	return status;
 }
 
+sgx_status_t ecall_ofproto_configure_table(sgx_enclave_id_t eid, bool* retval, int table_id, struct mf_subfield* groups, char* name, unsigned int max_flows, unsigned int n_fields, unsigned int buf_size, unsigned int* real_size, struct cls_rule* buf, bool* is_readonly)
+{
+	sgx_status_t status;
+	ms_ecall_ofproto_configure_table_t ms;
+	ms.ms_table_id = table_id;
+	ms.ms_groups = groups;
+	ms.ms_name = name;
+	ms.ms_max_flows = max_flows;
+	ms.ms_n_fields = n_fields;
+	ms.ms_buf_size = buf_size;
+	ms.ms_real_size = real_size;
+	ms.ms_buf = buf;
+	ms.ms_is_readonly = is_readonly;
+	status = sgx_ecall(eid, 6, &ocall_table_enclave, &ms);
+	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
+	return status;
+}
+
 sgx_status_t ecall_ofproto_init_tables(sgx_enclave_id_t eid, int n_tables)
 {
 	sgx_status_t status;
 	ms_ecall_ofproto_init_tables_t ms;
 	ms.ms_n_tables = n_tables;
-	status = sgx_ecall(eid, 6, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 7, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -462,7 +493,7 @@ sgx_status_t ecall_readonly_set(sgx_enclave_id_t eid, int table_id)
 	sgx_status_t status;
 	ms_ecall_readonly_set_t ms;
 	ms.ms_table_id = table_id;
-	status = sgx_ecall(eid, 7, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 8, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -471,7 +502,7 @@ sgx_status_t ecall_istable_readonly(sgx_enclave_id_t eid, int* retval, uint8_t t
 	sgx_status_t status;
 	ms_ecall_istable_readonly_t ms;
 	ms.ms_table_id = table_id;
-	status = sgx_ecall(eid, 8, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 9, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -483,7 +514,7 @@ sgx_status_t ecall_cls_rule_init(sgx_enclave_id_t eid, struct cls_rule* o_cls_ru
 	ms.ms_o_cls_rule = o_cls_rule;
 	ms.ms_match = match;
 	ms.ms_priority = priority;
-	status = sgx_ecall(eid, 9, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 10, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -493,7 +524,7 @@ sgx_status_t ecall_cr_rule_overlaps(sgx_enclave_id_t eid, int* retval, int table
 	ms_ecall_cr_rule_overlaps_t ms;
 	ms.ms_table_id = table_id;
 	ms.ms_o_cls_rule = o_cls_rule;
-	status = sgx_ecall(eid, 10, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 11, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -503,7 +534,7 @@ sgx_status_t ecall_cls_rule_destroy(sgx_enclave_id_t eid, struct cls_rule* o_cls
 	sgx_status_t status;
 	ms_ecall_cls_rule_destroy_t ms;
 	ms.ms_o_cls_rule = o_cls_rule;
-	status = sgx_ecall(eid, 11, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 12, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -513,7 +544,7 @@ sgx_status_t ecall_cls_rule_hash(sgx_enclave_id_t eid, uint32_t* retval, const s
 	ms_ecall_cls_rule_hash_t ms;
 	ms.ms_o_cls_rule = o_cls_rule;
 	ms.ms_basis = basis;
-	status = sgx_ecall(eid, 12, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 13, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -524,7 +555,7 @@ sgx_status_t ecall_cls_rule_equal(sgx_enclave_id_t eid, int* retval, const struc
 	ms_ecall_cls_rule_equal_t ms;
 	ms.ms_o_cls_rule_a = o_cls_rule_a;
 	ms.ms_o_cls_rule_b = o_cls_rule_b;
-	status = sgx_ecall(eid, 13, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 14, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -536,7 +567,7 @@ sgx_status_t ecall_classifier_replace(sgx_enclave_id_t eid, int table_id, struct
 	ms.ms_table_id = table_id;
 	ms.ms_o_cls_rule = o_cls_rule;
 	ms.ms_cls_rule_rtrn = cls_rule_rtrn;
-	status = sgx_ecall(eid, 14, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 15, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -545,7 +576,7 @@ sgx_status_t ecall_rule_get_flags(sgx_enclave_id_t eid, enum oftable_flags* retv
 	sgx_status_t status;
 	ms_ecall_rule_get_flags_t ms;
 	ms.ms_table_id = table_id;
-	status = sgx_ecall(eid, 15, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 16, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -555,7 +586,7 @@ sgx_status_t ecall_cls_count(sgx_enclave_id_t eid, int* retval, int table_id)
 	sgx_status_t status;
 	ms_ecall_cls_count_t ms;
 	ms.ms_table_id = table_id;
-	status = sgx_ecall(eid, 16, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 17, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -565,7 +596,7 @@ sgx_status_t ecall_eviction_fields_enable(sgx_enclave_id_t eid, int* retval, int
 	sgx_status_t status;
 	ms_ecall_eviction_fields_enable_t ms;
 	ms.ms_table_id = table_id;
-	status = sgx_ecall(eid, 17, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 18, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -577,7 +608,7 @@ sgx_status_t ecall_evg_group_resize(sgx_enclave_id_t eid, int table_id, struct c
 	ms.ms_table_id = table_id;
 	ms.ms_o_cls_rule = o_cls_rule;
 	ms.ms_priority = priority;
-	status = sgx_ecall(eid, 18, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 19, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -590,7 +621,7 @@ sgx_status_t ecall_evg_add_rule(sgx_enclave_id_t eid, size_t* retval, int table_
 	ms.ms_priority = priority;
 	ms.ms_rule_evict_prioriy = rule_evict_prioriy;
 	ms.ms_rule_evg_node = rule_evg_node;
-	status = sgx_ecall(eid, 19, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 20, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -601,7 +632,7 @@ sgx_status_t ecall_evg_remove_rule(sgx_enclave_id_t eid, int* retval, int table_
 	ms_ecall_evg_remove_rule_t ms;
 	ms.ms_table_id = table_id;
 	ms.ms_o_cls_rule = o_cls_rule;
-	status = sgx_ecall(eid, 20, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 21, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -612,7 +643,7 @@ sgx_status_t ecall_cls_remove(sgx_enclave_id_t eid, int table_id, struct cls_rul
 	ms_ecall_cls_remove_t ms;
 	ms.ms_table_id = table_id;
 	ms.ms_o_cls_rule = o_cls_rule;
-	status = sgx_ecall(eid, 21, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 22, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -622,7 +653,7 @@ sgx_status_t ecall_choose_rule_to_evict(sgx_enclave_id_t eid, int table_id, stru
 	ms_ecall_choose_rule_to_evict_t ms;
 	ms.ms_table_id = table_id;
 	ms.ms_o_cls_rule = o_cls_rule;
-	status = sgx_ecall(eid, 22, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 23, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -631,7 +662,7 @@ sgx_status_t ecall_table_mflows(sgx_enclave_id_t eid, unsigned int* retval, int 
 	sgx_status_t status;
 	ms_ecall_table_mflows_t ms;
 	ms.ms_table_id = table_id;
-	status = sgx_ecall(eid, 23, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 24, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -642,7 +673,7 @@ sgx_status_t ecall_choose_rule_to_evict_p(sgx_enclave_id_t eid, int table_id, st
 	ms_ecall_choose_rule_to_evict_p_t ms;
 	ms.ms_table_id = table_id;
 	ms.ms_o_cls_rule = o_cls_rule;
-	status = sgx_ecall(eid, 24, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 25, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -652,7 +683,7 @@ sgx_status_t ecall_minimatch_expand(sgx_enclave_id_t eid, struct cls_rule* o_cls
 	ms_ecall_minimatch_expand_t ms;
 	ms.ms_o_cls_rule = o_cls_rule;
 	ms.ms_dst = dst;
-	status = sgx_ecall(eid, 25, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 26, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -661,7 +692,7 @@ sgx_status_t ecall_cr_priority(sgx_enclave_id_t eid, unsigned int* retval, struc
 	sgx_status_t status;
 	ms_ecall_cr_priority_t ms;
 	ms.ms_o_cls_rule = o_cls_rule;
-	status = sgx_ecall(eid, 26, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 27, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -674,7 +705,7 @@ sgx_status_t ecall_cls_find_match_exactly(sgx_enclave_id_t eid, int table_id, co
 	ms.ms_target = target;
 	ms.ms_priority = priority;
 	ms.ms_o_cls_rule = o_cls_rule;
-	status = sgx_ecall(eid, 27, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 28, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -685,7 +716,7 @@ sgx_status_t ecall_femt_ccfe_c(sgx_enclave_id_t eid, int* retval, int ofproto_n_
 	ms.ms_ofproto_n_tables = ofproto_n_tables;
 	ms.ms_table_id = table_id;
 	ms.ms_match = match;
-	status = sgx_ecall(eid, 28, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 29, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -699,7 +730,7 @@ sgx_status_t ecall_femt_ccfe_r(sgx_enclave_id_t eid, int ofproto_n_tables, struc
 	ms.ms_elem = elem;
 	ms.ms_table_id = table_id;
 	ms.ms_match = match;
-	status = sgx_ecall(eid, 29, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 30, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -711,7 +742,7 @@ sgx_status_t ecall_femt_c(sgx_enclave_id_t eid, int* retval, int ofproto_n_table
 	ms.ms_table_id = table_id;
 	ms.ms_match = match;
 	ms.ms_priority = priority;
-	status = sgx_ecall(eid, 30, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 31, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -726,7 +757,7 @@ sgx_status_t ecall_femt_r(sgx_enclave_id_t eid, int ofproto_n_tables, struct cls
 	ms.ms_table_id = table_id;
 	ms.ms_match = match;
 	ms.ms_priority = priority;
-	status = sgx_ecall(eid, 31, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 32, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -738,7 +769,7 @@ sgx_status_t ecall_oftable_enable_eviction(sgx_enclave_id_t eid, int table_id, c
 	ms.ms_fields = fields;
 	ms.ms_n_fields = n_fields;
 	ms.ms_random_v = random_v;
-	status = sgx_ecall(eid, 32, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 33, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -747,7 +778,7 @@ sgx_status_t ecall_oftable_disable_eviction(sgx_enclave_id_t eid, int table_id)
 	sgx_status_t status;
 	ms_ecall_oftable_disable_eviction_t ms;
 	ms.ms_table_id = table_id;
-	status = sgx_ecall(eid, 33, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 34, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -756,7 +787,7 @@ sgx_status_t ecall_ccfe_c(sgx_enclave_id_t eid, int* retval, int table_id)
 	sgx_status_t status;
 	ms_ecall_ccfe_c_t ms;
 	ms.ms_table_id = table_id;
-	status = sgx_ecall(eid, 34, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 35, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -768,7 +799,7 @@ sgx_status_t ecall_ccfe_r(sgx_enclave_id_t eid, struct cls_rule** buf, int elem,
 	ms.ms_buf = buf;
 	ms.ms_elem = elem;
 	ms.ms_table_id = table_id;
-	status = sgx_ecall(eid, 35, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 36, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -778,14 +809,14 @@ sgx_status_t ecall_table_mflows_set(sgx_enclave_id_t eid, int table_id, unsigned
 	ms_ecall_table_mflows_set_t ms;
 	ms.ms_table_id = table_id;
 	ms.ms_value = value;
-	status = sgx_ecall(eid, 36, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 37, &ocall_table_enclave, &ms);
 	return status;
 }
 
 sgx_status_t ecall_ofproto_destroy(sgx_enclave_id_t eid)
 {
 	sgx_status_t status;
-	status = sgx_ecall(eid, 37, &ocall_table_enclave, NULL);
+	status = sgx_ecall(eid, 38, &ocall_table_enclave, NULL);
 	return status;
 }
 
@@ -793,7 +824,7 @@ sgx_status_t ecall_total_rules(sgx_enclave_id_t eid, unsigned int* retval)
 {
 	sgx_status_t status;
 	ms_ecall_total_rules_t ms;
-	status = sgx_ecall(eid, 38, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 39, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -805,7 +836,7 @@ sgx_status_t ecall_table_name(sgx_enclave_id_t eid, int table_id, char* buf, siz
 	ms.ms_table_id = table_id;
 	ms.ms_buf = buf;
 	ms.ms_len = len;
-	status = sgx_ecall(eid, 39, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 40, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -816,7 +847,7 @@ sgx_status_t ecall_collect_ofmonitor_util_c(sgx_enclave_id_t eid, int* retval, i
 	ms.ms_ofproto_n_tables = ofproto_n_tables;
 	ms.ms_table_id = table_id;
 	ms.ms_match = match;
-	status = sgx_ecall(eid, 40, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 41, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -830,7 +861,7 @@ sgx_status_t ecall_collect_ofmonitor_util_r(sgx_enclave_id_t eid, int ofproto_n_
 	ms.ms_elem = elem;
 	ms.ms_table_id = table_id;
 	ms.ms_match = match;
-	status = sgx_ecall(eid, 41, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 42, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -840,7 +871,7 @@ sgx_status_t ecall_cls_rule_is_loose_match(sgx_enclave_id_t eid, int* retval, st
 	ms_ecall_cls_rule_is_loose_match_t ms;
 	ms.ms_o_cls_rule = o_cls_rule;
 	ms.ms_criteria = criteria;
-	status = sgx_ecall(eid, 42, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 43, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -849,7 +880,7 @@ sgx_status_t ecall_fet_ccfes_c(sgx_enclave_id_t eid, int* retval)
 {
 	sgx_status_t status;
 	ms_ecall_fet_ccfes_c_t ms;
-	status = sgx_ecall(eid, 43, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 44, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -860,7 +891,7 @@ sgx_status_t ecall_fet_ccfes_r(sgx_enclave_id_t eid, struct cls_rule** buf, int 
 	ms_ecall_fet_ccfes_r_t ms;
 	ms.ms_buf = buf;
 	ms.ms_elem = elem;
-	status = sgx_ecall(eid, 44, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 45, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -868,7 +899,7 @@ sgx_status_t ecall_fet_ccfe_c(sgx_enclave_id_t eid, int* retval)
 {
 	sgx_status_t status;
 	ms_ecall_fet_ccfe_c_t ms;
-	status = sgx_ecall(eid, 45, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 46, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -879,7 +910,7 @@ sgx_status_t ecall_fet_ccfe_r(sgx_enclave_id_t eid, struct cls_rule** buf, int e
 	ms_ecall_fet_ccfe_r_t ms;
 	ms.ms_buf = buf;
 	ms.ms_elem = elem;
-	status = sgx_ecall(eid, 46, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 47, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -891,7 +922,7 @@ sgx_status_t ecall_cls_lookup(sgx_enclave_id_t eid, struct cls_rule** o_cls_rule
 	ms.ms_table_id = table_id;
 	ms.ms_flow = flow;
 	ms.ms_wc = wc;
-	status = sgx_ecall(eid, 47, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 48, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -900,7 +931,7 @@ sgx_status_t ecall_cls_rule_priority(sgx_enclave_id_t eid, unsigned int* retval,
 	sgx_status_t status;
 	ms_ecall_cls_rule_priority_t ms;
 	ms.ms_o_cls_rule = o_cls_rule;
-	status = sgx_ecall(eid, 48, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 49, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -909,7 +940,7 @@ sgx_status_t ecall_desfet_ccfes_c(sgx_enclave_id_t eid, int* retval)
 {
 	sgx_status_t status;
 	ms_ecall_desfet_ccfes_c_t ms;
-	status = sgx_ecall(eid, 49, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 50, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -920,7 +951,7 @@ sgx_status_t ecall_desfet_ccfes_r(sgx_enclave_id_t eid, struct cls_rule** buf, i
 	ms_ecall_desfet_ccfes_r_t ms;
 	ms.ms_buf = buf;
 	ms.ms_elem = elem;
-	status = sgx_ecall(eid, 50, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 51, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -930,7 +961,7 @@ sgx_status_t ecall_cls_rule_format(sgx_enclave_id_t eid, unsigned int* retval, c
 	ms_ecall_cls_rule_format_t ms;
 	ms.ms_o_cls_rule = o_cls_rule;
 	ms.ms_megamatch = megamatch;
-	status = sgx_ecall(eid, 51, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 52, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -941,7 +972,7 @@ sgx_status_t ecall_miniflow_expand(sgx_enclave_id_t eid, struct cls_rule* o_cls_
 	ms_ecall_miniflow_expand_t ms;
 	ms.ms_o_cls_rule = o_cls_rule;
 	ms.ms_flow = flow;
-	status = sgx_ecall(eid, 52, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 53, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -952,7 +983,7 @@ sgx_status_t ecall_rule_calculate_tag(sgx_enclave_id_t eid, uint32_t* retval, st
 	ms.ms_o_cls_rule = o_cls_rule;
 	ms.ms_flow = flow;
 	ms.ms_table_id = table_id;
-	status = sgx_ecall(eid, 53, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 54, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -962,7 +993,7 @@ sgx_status_t ecall_SGX_table_dpif(sgx_enclave_id_t eid, int n_tables)
 	sgx_status_t status;
 	ms_ecall_SGX_table_dpif_t ms;
 	ms.ms_n_tables = n_tables;
-	status = sgx_ecall(eid, 54, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 55, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -971,7 +1002,7 @@ sgx_status_t ecall_table_update_taggable(sgx_enclave_id_t eid, int* retval, uint
 	sgx_status_t status;
 	ms_ecall_table_update_taggable_t ms;
 	ms.ms_table_id = table_id;
-	status = sgx_ecall(eid, 55, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 56, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -981,7 +1012,7 @@ sgx_status_t ecall_is_sgx_other_table(sgx_enclave_id_t eid, int* retval, int id)
 	sgx_status_t status;
 	ms_ecall_is_sgx_other_table_t ms;
 	ms.ms_id = id;
-	status = sgx_ecall(eid, 56, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 57, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -993,7 +1024,7 @@ sgx_status_t ecall_rule_calculate_tag_s(sgx_enclave_id_t eid, uint32_t* retval, 
 	ms.ms_id = id;
 	ms.ms_flow = flow;
 	ms.ms_secret = secret;
-	status = sgx_ecall(eid, 57, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 58, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -1001,7 +1032,7 @@ sgx_status_t ecall_rule_calculate_tag_s(sgx_enclave_id_t eid, uint32_t* retval, 
 sgx_status_t ecall_hidden_tables_check(sgx_enclave_id_t eid)
 {
 	sgx_status_t status;
-	status = sgx_ecall(eid, 58, &ocall_table_enclave, NULL);
+	status = sgx_ecall(eid, 59, &ocall_table_enclave, NULL);
 	return status;
 }
 
@@ -1011,7 +1042,7 @@ sgx_status_t ecall_oftable_set_name(sgx_enclave_id_t eid, int table_id, char* na
 	ms_ecall_oftable_set_name_t ms;
 	ms.ms_table_id = table_id;
 	ms.ms_name = name;
-	status = sgx_ecall(eid, 59, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 60, &ocall_table_enclave, &ms);
 	return status;
 }
 
@@ -1020,7 +1051,7 @@ sgx_status_t ecall_minimask_get_vid_mask(sgx_enclave_id_t eid, uint16_t* retval,
 	sgx_status_t status;
 	ms_ecall_minimask_get_vid_mask_t ms;
 	ms.ms_o_cls_rule = o_cls_rule;
-	status = sgx_ecall(eid, 60, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 61, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -1030,7 +1061,7 @@ sgx_status_t ecall_miniflow_get_vid(sgx_enclave_id_t eid, uint16_t* retval, stru
 	sgx_status_t status;
 	ms_ecall_miniflow_get_vid_t ms;
 	ms.ms_o_cls_rule = o_cls_rule;
-	status = sgx_ecall(eid, 61, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 62, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -1039,7 +1070,7 @@ sgx_status_t ecall_ofproto_get_vlan_c(sgx_enclave_id_t eid, int* retval)
 {
 	sgx_status_t status;
 	ms_ecall_ofproto_get_vlan_c_t ms;
-	status = sgx_ecall(eid, 62, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 63, &ocall_table_enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -1050,7 +1081,7 @@ sgx_status_t ecall_ofproto_get_vlan_r(sgx_enclave_id_t eid, uint16_t* buf, int e
 	ms_ecall_ofproto_get_vlan_r_t ms;
 	ms.ms_buf = buf;
 	ms.ms_elem = elem;
-	status = sgx_ecall(eid, 63, &ocall_table_enclave, &ms);
+	status = sgx_ecall(eid, 64, &ocall_table_enclave, &ms);
 	return status;
 }
 

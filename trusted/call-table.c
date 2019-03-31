@@ -205,6 +205,22 @@ void execute_function(int function, argument_list *args, return_value *ret) {
                                             (struct cls_rule **) args->arg3,
                                             (bool *) args->arg4);
       break;
+    case ECALL_OFPROTO_CONFIGURE_TABLE:
+      *((bool *) ret->val) = ecall_ofproto_configure_table(
+                                                          *((int *) args->arg1),
+                                                          (struct mf_subfield *) args->arg2,
+                                                          (char *) args->arg3,
+                                                          *((unsigned int *) args->arg4),
+                                                          *((unsigned int *) args->arg5),
+                                                          *((unsigned int *) args->arg6),
+                                                          (unsigned int *) args->arg7,
+                                                          (struct cls_rule *) args->arg8,
+                                                          (bool *) args->arg9);
+
+      break;
+    case ECALL_CLS_RULE_PRIORITY:
+      *((unsigned int *) ret->val) =  ecall_cls_rule_priority((struct cls_rule *) args->arg1);
+      break;
     default:
       printf("Error, no matching switch case for %d.\n", function);
   }

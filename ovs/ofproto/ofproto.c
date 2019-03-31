@@ -1002,52 +1002,46 @@ ofproto_configure_table(struct ofproto *ofproto, int table_id,
     table = &ofproto->tables[table_id];
 
     oftable_set_name(table, s->name);
-#else
-    //This function will configure the table name
-    SGX_oftable_set_name(table_id,s->name);
-#endif
 
-#ifndef SGX
     if (table->flags & OFTABLE_READONLY) {
         return;
     }
-#else
-    //Is the table read-only?????
-    if(SGX_istable_readonly(table_id)){
-    	return;
-    }
 
-#endif
-
-
-#ifndef SGX
     if (s->groups) {
         oftable_enable_eviction(table, s->groups, s->n_groups);
     } else {
         oftable_disable_eviction(table);
     }
 
-#else
-    if (s->groups) {
-        oftable_enable_eviction(table_id,s->groups, s->n_groups);
-    } else {
-        SGX_oftable_disable_eviction(table_id);
-    }
-#endif
-
-
-
-
-#ifndef SGX
     table->max_flows = s->max_flows;
     if (classifier_count(&table->cls) > table->max_flows
         && table->eviction_fields) {
 #else
-    //1. We set the max_flows:
-    	SGX_table_mflows_set(table_id,s->max_flows);
-    //2.use of classifier_count cls_rules
-    	   if (SGX_cls_count(table_id)>SGX_table_mflows(table_id)
-    			   && SGX_eviction_fields_enable(table_id)){
+    // FIXME: Enable variable length buf_size, we need to allocate larger buffer in the case the default size is not enough.
+    unsigned int buf_size = 10;
+    struct cls_rule *buf[buf_size];
+    bool is_readonly = true;
+    unsigned int *real_size;
+    bool res = SGX_ofproto_configure_table(table_id,
+                                           s->groups,
+                                           s->name,
+                                           s->max_flows,
+                                           s->n_groups,
+                                           buf_size,
+                                           &real_size,
+                                           buf,
+                                           &is_readonly);
+    if(is_readonly) {
+      return;
+    }
+
+    if(buf_size) {
+      int lp;
+      for(lp = 0; lp < real_size; lp++){
+        eviction_group_add_rule(rule_from_cls_rule(buf[lp]));
+      }
+    }
+    if(res) {
 #endif
 
     	/* 'table' contains more flows than allowed.  We might not be able to
@@ -5251,7 +5245,7 @@ rule_eviction_priority(struct rule *rule)
  * own).
  *
  * The caller must ensure that 'rule' is not already in an eviction group. */
-static void
+void
 eviction_group_add_rule(struct rule *rule)
 {
     struct ofproto *ofproto = rule->ofproto;
@@ -5268,12 +5262,14 @@ eviction_group_add_rule(struct rule *rule)
         eviction_group_resized(table, evg);
     }
 #else
-
+    if(rule->hard_timeout || rule->idle_timeout) {
+      ecall_eviction_group_add_rule(rule->table_id, &rule->cr, rule->evg_node);
+    }
     if((rule->hard_timeout || rule->idle_timeout) && SGX_eviction_fields_enable(rule->table_id)) {
-    	size_t result=SGX_evg_add_rule(rule->table_id,&rule->cr,eviction_group_priority(0),
-    	    			rule_eviction_priority(rule),rule->evg_node);
+    	size_t result = SGX_evg_add_rule(rule->table_id, &rule->cr, eviction_group_priority(0),
+    	    			rule_eviction_priority(rule), rule->evg_node);
 
-    	SGX_evg_group_resize(rule->table_id,&rule->cr,eviction_group_priority(result));
+    	           SGX_evg_group_resize(rule->table_id,&rule->cr,eviction_group_priority(result));
     }
 
 #endif

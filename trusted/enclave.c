@@ -1065,6 +1065,42 @@ void ecall_classifer_replace_if_modifiable(int table_id, struct cls_rule* o_cls_
    }
 }
 
+bool ecall_ofproto_configure_table(int table_id,
+                                   struct mf_subfield *groups,
+                                   char *name,
+                                   unsigned int max_flows,
+                                   unsigned int n_fields,
+                                   unsigned int buf_size,
+                                   unsigned int *real_size,
+                                   struct cls_rule *buf,
+                                   bool *is_readonly) {
+  //This function will configure the table name
+  ecall_oftable_set_name(table_id, name);
+  //Is the table read-only?????
+  if(ecall_istable_readonly(table_id)){
+    *is_readonly = true;
+    return false;
+  }
+
+  if (groups) {
+      uint32_t rand_val;
+      sgx_read_rand((unsigned char *) &rand_val, 4);
+      ecall_oftable_enable_eviction(table_id, groups, n_fields, rand_val);
+      *real_size = ecall_ccfe_c(table_id);
+      if(*real_size > buf_size) {
+        printf("Buffer too small\n");
+        return false;
+      }
+      ecall_ccfe_r(&buf, buf_size, table_id);
+  } else {
+      ecall_oftable_disable_eviction(table_id);
+  }
+  ecall_table_mflows_set(table_id, max_flows);
+  bool evict = (ecall_cls_count(table_id) > ecall_table_mflows(table_id)
+      && ecall_eviction_fields_enable(table_id));
+  return evict;
+}
+
 // HOT CALLS!
 int ecall_start_poller(async_ecall *ctx) {
 	//sgx_thread_mutex_init(&ctx->mutex, NULL);

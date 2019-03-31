@@ -72,6 +72,7 @@
 #define ECALL_MINIFLOW_EXPAND_AND_TAG 61
 #define ECALL_ALLOCATE_CLS_RULE_IF_NOT_READ_ONLY 62
 #define ECALL_CLASSIFIER_REPLACE_IF_MODIFIABLE 63
+#define ECALL_OFPROTO_CONFIGURE_TABLE 64
 
 typedef struct {
   int n_args;
@@ -81,6 +82,10 @@ typedef struct {
   void *arg4;
   void *arg5;
   void *arg6;
+  void *arg7;
+  void *arg8;
+  void *arg9;
+  void *arg10;
 
 } argument_list;
 
@@ -103,5 +108,7 @@ typedef struct {
   argument_list *args;
   return_value *ret;
 } async_ecall;
+
+//struct mf_subfield;
 
 #endif

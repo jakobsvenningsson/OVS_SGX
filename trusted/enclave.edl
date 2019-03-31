@@ -27,6 +27,18 @@ enclave {
 					public uint32_t ecall_miniflow_expand_and_tag([user_check] struct cls_rule *o_cls_rule, [user_check] struct flow *flow, int table_id);
 					public bool ecall_allocate_cls_rule_if_not_read_only(int table_id, [user_check] struct cls_rule *o_cls_rule, [user_check] struct match *match, unsigned int priority);
 					public void ecall_classifer_replace_if_modifiable(int table_id, [user_check] struct cls_rule* o_cls_rule,  [user_check] struct cls_rule ** cls_rule_rtrn,  [user_check] bool *rule_is_modifiable);
+					//public bool ecall_ofproto_configure_table(int table_id, [user_check] mf_subfield *groups, [user_check] char *name, unsigned int max_flows);
+
+					public bool ecall_ofproto_configure_table(int table_id,
+					                                   [user_check] struct mf_subfield *groups,
+					                                   [user_check] char *name,
+					                                   unsigned int max_flows,
+					                                   unsigned int n_fields,
+					                                   unsigned int buf_size,
+					                                   [user_check] unsigned int *real_size,
+					                                   [user_check] struct cls_rule *buf,
+					                                   [user_check] bool *is_readonly);
+
 
     	    public void ecall_ofproto_init_tables(int n_tables);
     	    public void ecall_readonly_set(int table_id);

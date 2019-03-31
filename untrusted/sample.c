@@ -14,6 +14,8 @@
 #include <pthread.h>
 
 #include "spinlock.h"
+#include "common.h"
+
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
@@ -1272,7 +1274,43 @@ void SGX_classifer_replace_if_modifiable(int table_id, struct cls_rule* o_cls_ru
   };
   make_hotcall(&ctx, ECALL_CLASSIFIER_REPLACE_IF_MODIFIABLE, &args, NULL);
   #else
-  puts("BBBBBB");
   ecall_classifer_replace_if_modifiable(global_eid, table_id, o_cls_rule, cls_rule_rtrn, rule_is_modifiable);
+  #endif
+}
+
+
+bool SGX_ofproto_configure_table(int table_id,
+                                 struct mf_subfield *groups,
+                                 char *name,
+                                 unsigned int max_flows,
+                                 size_t n_groups,
+                                 unsigned int buf_size,
+                                 unsigned int *real_size,
+                                 struct cls_rule *buf,
+                                 bool *is_readonly) {
+  #ifdef HOTCALL
+  argument_list args = {
+    .n_args = 9,
+    .arg1 = (void *) &table_id,
+    .arg2 = (void *) groups,
+    .arg3 = (void *) name,
+    .arg4 = (void *) &max_flows,
+    .arg5 = (void *) &n_groups,
+    .arg6 = (void *) &buf_size,
+    .arg7 = (void *) real_size,
+    .arg8 = (void *) buf,
+    .arg9 = (void *) is_readonly,
+  };
+  bool ecall_return;
+  return_value ret = {
+    .allocated_size = 0,
+    .val = (void *) &ecall_return
+  };
+  make_hotcall(&ctx, ECALL_OFPROTO_CONFIGURE_TABLE, &args, &ret);
+  return ecall_return;
+  #else
+  bool ecall_return;
+  ecall_ofproto_configure_table(global_eid, &ecall_return, table_id, groups, name, max_flows, n_groups, buf_size, real_size, buf, is_readonly);
+  return ecall_return;
   #endif
 }
